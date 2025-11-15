@@ -174,6 +174,7 @@ class RRPRobot:
         plt.show()
     
         
+    
 if __name__ == "__main__":
     print("RRP Robotic Arm Visualization Toolbox")
     print("=" * 50)
