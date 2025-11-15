@@ -181,11 +181,9 @@ class RRPToolbox:
         
         offest_theta1 = math.atan2(y3, x3)
         theta1 = math.atan2(y, x) - offest_theta1
-        theta1 = self.rad_to_deg(theta1)
         
-        offset_theta2 = math.atan2(z3-z2, math.sqrt((x3-x1)**2 + (y3-y1)**2))
+        offset_theta2 = math.atan2(z3-z1, math.sqrt((x3-x1)**2 + (y3-y1)**2))
         theta2 = math.atan2(z - z1, math.sqrt((x - x1)**2 + (y - y1)**2)) - offset_theta2
-        theta2 = self.rad_to_deg(theta2)
         
         z1 = self.joint_local_positions[1][2]  # Link 1 z
         z2 = self.joint_local_positions[2][2]  # Link 2 z
@@ -193,8 +191,10 @@ class RRPToolbox:
         x2 = self.joint_local_positions[2][0]  # Link 2
         x3 = self.joint_local_positions[3][0]  # End Effector
         
-        d3 = ((z -z1 - math.cos(theta2)*z2 - math.cos(theta2)*z3 - math.sin(theta2)*x2) / math.sin(theta2)) - x3
+        d3 = ((z - z1 - math.cos(theta2)*z2 - math.cos(theta2)*z3 - math.sin(theta2)*x2) / math.sin(theta2)) - x3
         
+        theta1 = self.rad_to_deg(theta1)
+        theta2 = self.rad_to_deg(theta2)
         
         if not (self.joint_limits[0][0] <= theta1 <= self.joint_limits[0][1]):
             raise ValueError(f"Calculated theta1 {theta1} is out of limits: {self.joint_limits[0]}")

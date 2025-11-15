@@ -11,7 +11,7 @@ joint_limits = [(-180, 180),(-90, 90), (-10, 10)]       # Second Joint and Third
 rrp_toolbox = toolbox.RRPToolbox(link_params, joint_limits)
 
 joint_parameters = (0, 0, 0)  # theta1, theta2, d3
-target_position = (0, 0, 9)
+target_position = (3, 0, 8)
 T = rrp_toolbox.Inverse_Kinematics(target_position)
 
 print("Calculated Joint Parameters (theta1, theta2, d3):", T)
