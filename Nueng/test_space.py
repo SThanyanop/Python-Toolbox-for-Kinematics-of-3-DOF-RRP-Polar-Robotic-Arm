@@ -6,12 +6,15 @@ link_2 = [(5, 0, 0)]          # Third Joint parameters
 end_effector = [(0, 0, 0)]    # End Effector parameters
 
 link_params = [link_1, link_2, end_effector]
-joint_limits = [(-180, 180),(-90, 90), (0, 10)]       # Second Joint and Third Joint limits
+joint_limits = [(-180, 180),(-90, 90), (-10, 10)]       # Second Joint and Third Joint limits
 
 rrp_toolbox = toolbox.RRPToolbox(link_params, joint_limits)
 
-joint_parameters = [0, 0, 0]  # theta1, theta2, d3
-T = rrp_toolbox.get_RRP_Tramsform_Matrix(joint_parameters)
+joint_parameters = (0, 0, 0)  # theta1, theta2, d3
+target_position = (0, 0, 9)
+T = rrp_toolbox.Inverse_Kinematics(target_position)
 
-for row in T:
-    print(row)
+print("Calculated Joint Parameters (theta1, theta2, d3):", T)
+
+FK = rrp_toolbox.Forward_Kinematics(T)
+print("Forward Kinematics Resulting Position:", FK)
