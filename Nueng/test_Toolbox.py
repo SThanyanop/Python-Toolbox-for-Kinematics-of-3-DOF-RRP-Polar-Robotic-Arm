@@ -43,10 +43,10 @@ class RRPToolbox:
         self.end_effector_position = self.joint_global_positions[-1]
         
     def deg_to_rad(self, degrees):
-        return degrees * (PI / 180)
+        return degrees * (PI / 180.0)
     
     def rad_to_deg(self, radians):
-        return radians * (180 / PI)
+        return radians * (180.0 / PI)
     
     def matrix_multiply(self, A, B):
         result = [[0 for _ in range(len(B[0]))] for _ in range(len(A))]
@@ -56,14 +56,20 @@ class RRPToolbox:
                     result[i][j] += A[i][k] * B[k][j]
         return result
     
-    def DH_Martrix_Transform(self, theta, d, a, alpha):
+    def DH_Martrix_Transform(self, a, alpha, d, theta):
         theta = self.deg_to_rad(theta)
         alpha = self.deg_to_rad(alpha)
         
-        DH_matrix = [[math.cos(theta), -math.sin(theta)*math.cos(alpha),  math.sin(theta)*math.sin(alpha), a*math.cos(theta)],
-                    [math.sin(theta),  math.cos(theta)*math.cos(alpha), -math.cos(theta)*math.sin(alpha), a*math.sin(theta)],
-                    [0,                math.sin(alpha),                   math.cos(alpha),                  d],
-                    [0,                0,                                 0,                                1]]
+        TX = [[1, 0, 0, a],
+              [0, math.cos(alpha), -math.sin(alpha), 0],
+                [0, math.sin(alpha),  math.cos(alpha), 0],
+                [0, 0, 0, 1]]
+        TZ = [[math.cos(theta), -math.sin(theta), 0, 0],
+              [math.sin(theta),  math.cos(theta), 0, 0],
+                [0, 0, 1, d],
+                [0, 0, 0, 1]]
+        
+        DH_matrix = self.matrix_multiply(TX, TZ)
         
         return DH_matrix
     
@@ -72,25 +78,27 @@ class RRPToolbox:
         theta2  = joint_parameters[1]
         d3      = joint_parameters[2]
         
-        x1 = self.joint_local_positions[1][0]
-        x2 = self.joint_local_positions[2][0]
-        x3 = self.joint_local_positions[2][2]
-        x4 = self.joint_local_positions[3][0] + d3
+        x1 = self.joint_local_positions[1][0]  # Link 1 x
+        y1 = self.joint_local_positions[1][1]  # Link 1 y
+        z1 = self.joint_local_positions[1][2]  # Link 1 z
         
-        z1 = self.joint_local_positions[1][2]
-        z2 = self.joint_local_positions[1][1]
-        z3 = self.joint_local_positions[2][1]
-        z4 = self.joint_local_positions[3][1]
-        z5 = self.joint_local_positions[3][2]
+        x2 = self.joint_local_positions[2][0]  # Link 2 x
+        y2 = self.joint_local_positions[2][1]  # Link 2 y
+        z2 = self.joint_local_positions[2][2]  # Link 2 z
         
-        T01 = self.DH_Martrix_Transform(theta1,   0,    0,   0)
-        T12 = self.DH_Martrix_Transform(0     ,  z1,   x1,   0)
-        T23 = self.DH_Martrix_Transform(theta2,  z2,    0,  90)
-        T34 = self.DH_Martrix_Transform(90    ,  z3,   x2,   0)
-        T45 = self.DH_Martrix_Transform(-90   ,  z4,   x3,   0)
-        T5E = self.DH_Martrix_Transform(0     ,  z5,   x4, -90)
+        x3 = self.joint_local_positions[3][0]  # End Effector x
+        y3 = self.joint_local_positions[3][1]  # End Effector y
+        z3 = self.joint_local_positions[3][2]  # End Effector z
         
-        to_multiply = [T01, T12, T23, T34, T45, T5E]
+        T01 = self.DH_Martrix_Transform(0,      0,      0,   theta1)
+        T12 = self.DH_Martrix_Transform(x1,     0,     z1,        0)
+        T23 = self.DH_Martrix_Transform(0,     90,     y1,   theta2)
+        T34 = self.DH_Martrix_Transform(x2,     0,     y2,       90)
+        T45 = self.DH_Martrix_Transform(z2,    90,      0,        0)
+        T56 = self.DH_Martrix_Transform(z3,     0,  x3+d3,       90)
+        T6E = self.DH_Martrix_Transform(y3,    90,      0,       90)
+        
+        to_multiply = [T01, T12, T23, T34, T45, T56, T6E]
         
         for i in range(len(to_multiply)):
             for j in range(len(to_multiply[i])):
