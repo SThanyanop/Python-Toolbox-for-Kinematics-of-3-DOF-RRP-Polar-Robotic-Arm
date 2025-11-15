@@ -1,179 +1,43 @@
-#import necessary libraries
+# Import Necessary Libraries
 import math
 
-#Define necessary constants
+#Define parameters
 PI = math.pi
 
-class TestToolbox:
+class RRPToolbox:
     
-    #initialize function
-    def __init__(self, link, joint_limits):
-        self.link               = link
-        self.joint_limits       = joint_limits
-        self.all_joint_position = []             # Initialize with base position note : All position is a local positions
+    def __init__(self, link_params, joint_limits):
+        self.link_params  = link_params  # This will contain second Joint, third Joint and End Effector parameters
+        self.joint_limits = joint_limits # This will contain second Joint and third Joint limits
         
-        self.register_joint_positions(self.link) # local joint position make transformation easier
-        self.all_joint_global_position = self.link_to_global_position()  # Get global joint positions
-        self.endeffector_position = self.EndEffector_absolute_position() # Get end effector absolute position
+        self.joint_local_positions  = [(0, 0, 0)] # First Revolute Joiny always at origin
+        self.joint_global_positions = [(0, 0, 0)] # First Revolute Joiny always at origin
+        self.end_effector_position  = (0, 0, 0)
         
-        print("Initialization complete. Joint positions registered.")
-    
-    def DH_transform(self, theta, d, a, alpha):
-        ct = math.cos(theta)
-        st = math.sin(theta)
-        ca = math.cos(alpha)
-        sa = math.sin(alpha)
+        self.get_position() # Calculate positions upon initialization
         
-        return [
-            [ct, -st * ca,  st * sa, a * ct],
-            [st,  ct * ca, -ct * sa, a * st],
-            [0,      sa,      ca,      d],
-            [0,      0,       0,      1]
-        ]
+        print("RRP Toolbox Initialized, (Parameters order (x, y, z))")
+        print("-----------------------")
+        print("Link Parameters       :", self.link_params)
+        print("Joint Limits          :", self.joint_limits)
+        print("Joint Local Positions :", self.joint_local_positions)
+        print("Joint Global Positions:", self.joint_global_positions)
+        print("End Effector Position :", self.end_effector_position)
         
-    def matrix_multiply(self, A, B):
-        result = [[0 for _ in range(len(B[0]))] for _ in range(len(A))]
-        
-        for i in range(len(A)):
-            for j in range(len(B[0])):
-                for k in range(len(B)):
-                    result[i][j] += A[i][k] * B[k][j]
-                    
-        return result
-        
-    def link_to_position(self, link):
-        x, y, z = 0, 0, 0
-        for pos in link:
-            x += pos[0]
-            y += pos[1]
-            z += pos[2]
-            
-        return (x, y, z)
-    
-    def link_to_global_position(self):
-        global_joint_positions = []
-        x, y, z = 0, 0, 0
-        for link in self.link:
-            tmp = self.link_to_position(link)
-            x += tmp[0]
-            y += tmp[1]
-            z += tmp[2]
-            pos = (x, y, z)
-            global_joint_positions.append(pos)
-        return global_joint_positions
-    
-    def EndEffector_absolute_position(self):
-        x, y, z = 0, 0, 0
-        for pos in self.all_joint_position:
-            x += pos[0]
-            y += pos[1]
-            z += pos[2]
-            
-        return (x, y, z)
-    
-    def register_joint_positions(self, link):
-        pos_1 = self.link_to_position(link[0]) # Joint 1
-        pos_2 = self.link_to_position(link[1]) # Joint 2
-        pos_3 = self.link_to_position(link[2]) # Joint 3
-        pos_4 = self.link_to_position(link[3]) # End Effector
-    
-        self.all_joint_position.extend([pos_1, pos_2, pos_3, pos_4]) #Joint 1, Joint 2, Joint 3, End Effector
-        
-    def ForwardKinematics(self, q1, q2, d3):
-        if not (self.joint_limits[0][0] <= q1 <= self.joint_limits[0][1]):
-            raise ValueError("q1 out of limits")
-        if not (self.joint_limits[1][0] <= q2 <= self.joint_limits[1][1]):
-            raise ValueError("q2 out of limits")
-        if not (self.joint_limits[2][0] <= d3 <= self.joint_limits[2][1]):
-            raise ValueError("d3 out of limits")
-        
-        local_transforms = [self.DH_transform(0, 0, 0, -PI/2)] # initial transformation
-        
-        for i,pos in enumerate(self.all_joint_position):
-            
-            x, y, z = pos
-            
-            theta = 0 # Z axis rotation
-            d     = 0 # Z axis translation
-            alpha = 0 # X axis rotation
-            a     = 0 # X axis translation
-
-            # Move X axis and Z axis first
-            
-            if i == 2: # prismatic joint
-                x += d3
-            
-            a = x
-            alpha = 0
-            d = y
-            theta = 0
-            local_transforms.append(self.DH_transform(theta, d, a, alpha))
-            
-            # Rotate X, Move Z and Rotate X back
-            a = 0
-            d = z
-            # Rotate and move according to link order
-            if i == 0:
-                theta = q1 # First joint rotation
-            else:
-                theta = 0  # Need to rotate back to 0 for other joints
-            
-            # Determine alpha based on y position
-            # This Rotate X and move Z if i = 0 then rotate Z for q1
-            if y > 0:
-                alpha = -PI/2
-            else:
-                alpha = PI/2    
-            local_transforms.append(self.DH_transform(theta, d, a, alpha))
-            
-            # If it's the second joint, apply q2 rotation
-            if i == 1:
-                theta = q2
-            else:
-                theta = 0
-            alpha = -alpha
-            local_transforms.append(self.DH_transform(theta, d, a, alpha))
-            
-            # For the end effector, apply fixed transformation and rotate axis to normal axis
-            if i == 3:
-                a = 0
-                d = 0
-                theta = 0
-                alpha = -PI/2
-                local_transforms.append(self.DH_transform(theta, d, a, alpha))
+    def get_position(self):
+        for sub_vec in self.link_params:
+            x, y, z = 0, 0, 0
+            for pos in sub_vec:
+                x += pos[0]
+                y += pos[1]
+                z += pos[2]
                 
-        # Combine all local transformations
-        T = [[1 if i == j else 0 for j in range(4)] for i in range(4)] # Identity matrix
-        for lt in local_transforms:
-            T = self.matrix_multiply(T, lt)
+            self.joint_local_positions.append((x, y, z))
             
-        return (T[0][3], T[1][3], T[2][3], T)  # Return end effector position (x, y, z) and transformation matrix T
-    
-    def InverseKinematics(self, x, y, z):
-        # Calculate q1
-        offset_q1 = math.atan2(self.endeffector_position[1], self.endeffector_position[0])
-        q1 = math.atan2(y, x) - offset_q1
+            x += self.joint_global_positions[-1][0]
+            y += self.joint_global_positions[-1][1]
+            z += self.joint_global_positions[-1][2]
+            
+            self.joint_global_positions.append((x, y, z))
         
-        # Calculate q2
-        offset_z = self.endeffector_position[2] - self.all_joint_global_position[1][2]
-        offset_x = self.endeffector_position[0] - self.all_joint_global_position[1][0]
-        
-        offset_q2 = math.atan2(offset_z, offset_x)
-        
-        q2 = math.atan2(z, x) - offset_q2
-        
-        # Calculate d3
-        d3 = x - self.endeffector_position[0]
-        
-        if not (self.joint_limits[0][0] <= q1 <= self.joint_limits[0][1]):
-            raise ValueError("q1 out of limits")
-        if not (self.joint_limits[1][0] <= q2 <= self.joint_limits[1][1]):
-            raise ValueError("q2 out of limits")
-        if not (self.joint_limits[2][0] <= d3 <= self.joint_limits[2][1]):
-            raise ValueError("d3 out of limits")
-        
-        return (q1, q2, d3)
-        
-        
-                    
-                
+        self.end_effector_position = self.joint_global_positions[-1]
