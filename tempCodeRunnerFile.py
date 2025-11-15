@@ -1,0 +1,5 @@
+eating static plot...")
+    # fig = plt.figure(figsize=(10, 8))
+    # ax = fig.add_subplot(111, projection='3d')
+    # robot.plot_robot(theta1=45, theta2=30, d3=0.4, ax=ax)
+    # plt.show()
