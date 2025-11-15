@@ -13,6 +13,8 @@ class TestToolbox:
         self.all_joint_position = []             # Initialize with base position note : All position is a local positions
         
         self.register_joint_positions(self.link) # local joint position make transformation easier
+        self.all_joint_global_position = self.link_to_global_position()  # Get global joint positions
+        self.endeffector_position = self.EndEffector_absolute_position() # Get end effector absolute position
         
         print("Initialization complete. Joint positions registered.")
     
@@ -42,6 +44,27 @@ class TestToolbox:
     def link_to_position(self, link):
         x, y, z = 0, 0, 0
         for pos in link:
+            x += pos[0]
+            y += pos[1]
+            z += pos[2]
+            
+        return (x, y, z)
+    
+    def link_to_global_position(self):
+        global_joint_positions = []
+        x, y, z = 0, 0, 0
+        for link in self.link:
+            tmp = self.link_to_position(link)
+            x += tmp[0]
+            y += tmp[1]
+            z += tmp[2]
+            pos = (x, y, z)
+            global_joint_positions.append(pos)
+        return global_joint_positions
+    
+    def EndEffector_absolute_position(self):
+        x, y, z = 0, 0, 0
+        for pos in self.all_joint_position:
             x += pos[0]
             y += pos[1]
             z += pos[2]
@@ -124,7 +147,33 @@ class TestToolbox:
         for lt in local_transforms:
             T = self.matrix_multiply(T, lt)
             
-        return (T[0][3], T[1][3], T[2][3])  # Return end effector position (x, y, z)
-                
+        return (T[0][3], T[1][3], T[2][3], T)  # Return end effector position (x, y, z) and transformation matrix T
+    
+    def InverseKinematics(self, x, y, z):
+        # Calculate q1
+        offset_q1 = math.atan2(self.endeffector_position[1], self.endeffector_position[0])
+        q1 = math.atan2(y, x) - offset_q1
+        
+        # Calculate q2
+        offset_z = self.endeffector_position[2] - self.all_joint_global_position[1][2]
+        offset_x = self.endeffector_position[0] - self.all_joint_global_position[1][0]
+        
+        offset_q2 = math.atan2(offset_z, offset_x)
+        
+        q2 = math.atan2(z, x) - offset_q2
+        
+        # Calculate d3
+        d3 = x - self.endeffector_position[0]
+        
+        if not (self.joint_limits[0][0] <= q1 <= self.joint_limits[0][1]):
+            raise ValueError("q1 out of limits")
+        if not (self.joint_limits[1][0] <= q2 <= self.joint_limits[1][1]):
+            raise ValueError("q2 out of limits")
+        if not (self.joint_limits[2][0] <= d3 <= self.joint_limits[2][1]):
+            raise ValueError("d3 out of limits")
+        
+        return (q1, q2, d3)
+        
+        
                     
                 
