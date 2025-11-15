@@ -173,6 +173,7 @@ class RRPRobot:
         self.plot_robot(theta1_init, theta2_init, d3_init, ax=ax)
         plt.show()
     
+        
 if __name__ == "__main__":
     print("RRP Robotic Arm Visualization Toolbox")
     print("=" * 50)
