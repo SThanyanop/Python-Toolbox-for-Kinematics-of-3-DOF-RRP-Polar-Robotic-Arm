@@ -173,8 +173,77 @@ class RRPRobot:
         self.plot_robot(theta1_init, theta2_init, d3_init, ax=ax)
         plt.show()
     
+    # def workspace_analysis(self, n_samples=20):
+    #     """
+    #     Visualize the robot's workspace by sampling joint configurations.
         
+    #     Args:
+    #         n_samples: Number of samples per joint
+    #     """
+    #     fig = plt.figure(figsize=(12, 5))
+        
+    #     # Generate samples
+    #     theta1_samples = np.linspace(*self.theta1_limits, n_samples)
+    #     theta2_samples = np.linspace(*self.theta2_limits, n_samples)
+    #     d3_samples = np.linspace(*self.d3_limits, n_samples)
+        
+    #     workspace_points = []
+    #     for th1 in theta1_samples:
+    #         for th2 in theta2_samples:
+    #             for d3 in d3_samples:
+    #                 pos = self.forward_kinematics(th1, th2, d3)
+    #                 workspace_points.append(pos[-1])
+        
+    #     workspace_points = np.array(workspace_points)
+        
+    #     # 3D workspace plot
+    #     ax1 = fig.add_subplot(121, projection='3d')
+    #     ax1.scatter(workspace_points[:, 0], workspace_points[:, 1], 
+    #                workspace_points[:, 2], c=workspace_points[:, 2], 
+    #                cmap='viridis', alpha=0.3, s=1)
+    #     ax1.set_xlabel('X (m)')
+    #     ax1.set_ylabel('Y (m)')
+    #     ax1.set_zlabel('Z (m)')
+    #     ax1.set_title('3D Workspace')
+        
+    #     # Top view (XY plane)
+    #     ax2 = fig.add_subplot(122)
+    #     ax2.scatter(workspace_points[:, 0], workspace_points[:, 1], 
+    #                c=workspace_points[:, 2], cmap='viridis', alpha=0.3, s=1)
+    #     ax2.set_xlabel('X (m)')
+    #     ax2.set_ylabel('Y (m)')
+    #     ax2.set_title('Workspace - Top View (XY)')
+    #     ax2.axis('equal')
+    #     ax2.grid(True, alpha=0.3)
+        
+    #     plt.tight_layout()
+    #     plt.show()
     
+    # def animate_trajectory(self, trajectory, interval=50):
+    #     """
+    #     Animate robot following a trajectory.
+        
+    #     Args:
+    #         trajectory: List of [theta1, theta2, d3] configurations
+    #         interval: Time between frames (ms)
+    #     """
+    #     fig = plt.figure(figsize=(10, 8))
+    #     ax = fig.add_subplot(111, projection='3d')
+        
+    #     def update_frame(frame):
+    #         ax.cla()
+    #         theta1, theta2, d3 = trajectory[frame]
+    #         self.plot_robot(theta1, theta2, d3, ax=ax, show_frame=False)
+    #         ax.set_title(f'Frame {frame+1}/{len(trajectory)}\n' + 
+    #                     f'θ1={theta1:.1f}°, θ2={theta2:.1f}°, d3={d3:.2f}m')
+        
+    #     anim = FuncAnimation(fig, update_frame, frames=len(trajectory), 
+    #                        interval=interval, repeat=True)
+    #     plt.show()
+    #     return anim
+
+
+# Example usage and demonstrations
 if __name__ == "__main__":
     print("RRP Robotic Arm Visualization Toolbox")
     print("=" * 50)
@@ -182,8 +251,24 @@ if __name__ == "__main__":
     # Create robot instance
     robot = RRPRobot(L1=1.0, L2=1.0, d3_max=1.0)
     
+    # Example 1: Interactive control
     print("\n1. Launching interactive control...")
     print("   Use sliders to control joint angles and prismatic extension")
     robot.interactive_plot()
+    
+    # Example 2: Workspace analysis (uncomment to use)
+    # print("\n2. Computing workspace...")
+    # robot.workspace_analysis(n_samples=15)
+    
+    # Example 3: Trajectory animation (uncomment to use)
+    # print("\n3. Creating trajectory animation...")
+    # trajectory = []
+    # for t in np.linspace(0, 2*np.pi, 50):
+    #     theta1 = 45 * np.sin(t)
+    #     theta2 = 30 * np.cos(t)
+    #     d3 = 0.4 + 0.2 * np.sin(2*t)
+    #     trajectory.append([theta1, theta2, d3])
+    # robot.animate_trajectory(trajectory)
+    
     print("\n" + "=" * 50)
     print("Toolbox demonstration complete!")
