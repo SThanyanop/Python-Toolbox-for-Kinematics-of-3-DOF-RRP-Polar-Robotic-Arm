@@ -117,11 +117,37 @@ class RRPToolbox:
         return T
     
     def get_RRP_Jacobian_Matrix(self, joint_parameters):
-        theta1  = joint_parameters[0]
-        theta2  = joint_parameters[1]
-        d3      = joint_parameters[2]
+        theta1  = self.deg_to_rad(joint_parameters[0])
+        theta2  = self.deg_to_rad(joint_parameters[1])
+        d3      = self.deg_to_rad(joint_parameters[2])
         
+        c1      = math.cos(theta1)
+        s1      = math.sin(theta1)
+        c2      = math.cos(theta2)
+        s2      = math.sin(theta2)
         
+        x1 = self.joint_local_positions[1][0]  # Link 1 x
+        y1 = self.joint_local_positions[1][1]  # Link 1 y
+        z1 = self.joint_local_positions[1][2]  # Link 1 z
+        
+        x2 = self.joint_local_positions[2][0]  # Link 2 x
+        y2 = self.joint_local_positions[2][1]  # Link 2 y
+        z2 = self.joint_local_positions[2][2]  # Link 2 z
+        
+        x3 = self.joint_local_positions[3][0]  # End Effector x
+        y3 = self.joint_local_positions[3][1]  # End Effector y
+        z3 = self.joint_local_positions[3][2]  # End Effector z
+        
+        J = [[ -s1*x1 + c1*y1 + c1*y2 + c1*y3 - s1*c2*(d3+x3) - s1*c2*x2 + s1*s2*z2 + s1*s2*z3, -c1*s2*(d3+x3) - c1*s2*x2 - c1*c2*z2 - c1*c2*z3, c1*c2],
+             [  c1*x1 + s1*y1 + s1*y2 + s1*y3 - c1*c2*(d3+x3) + c1*c2*x2 - c1*s2*z2 - c1*s2*z3, -s1*s2*(d3+x3) - s1*s2*x2 - s1*c2*z2 - s1*c2*z3, s1*c2],
+             [                                                                               0,              c2*(d3+x3) - s2*z2 - s2*z3 + c2*x2,    s2],
+             [                                                                               0,                                               0,     0],
+             [                                                                               0,                                               0,     0],
+             [                                                                               1,                                               1,     0]]
+        
+        reduced_J = [J[0][:], J[1][:], J[2][:]]
+        
+        return J,reduced_J
     
     def Forward_Kinematics(self, joint_parameters):
         if len(joint_parameters) != 3:
