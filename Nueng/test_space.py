@@ -10,4 +10,5 @@ joint_limits = [(-180, 180),(-90, 90), (0, 10)]       # Second Joint and Third J
 
 rrp_toolbox = toolbox.RRPToolbox(link_params, joint_limits)
 
-print(math.cos(math.radians(180)))
+joint_parameters = [45, 30, 5]  # theta1, theta2, d3
+rrp_toolbox.get_RRP_Tramsform_Matrix(joint_parameters)

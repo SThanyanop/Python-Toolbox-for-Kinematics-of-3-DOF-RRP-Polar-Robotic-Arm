@@ -64,6 +64,7 @@ class RRPToolbox:
                     [math.sin(theta),  math.cos(theta)*math.cos(alpha), -math.cos(theta)*math.sin(alpha), a*math.sin(theta)],
                     [0,                math.sin(alpha),                   math.cos(alpha),                  d],
                     [0,                0,                                 0,                                1]]
+        
         return DH_matrix
     
     def get_RRP_Tramsform_Matrix(self, joint_parameters):
@@ -91,6 +92,12 @@ class RRPToolbox:
         
         to_multiply = [T01, T12, T23, T34, T45, T5E]
         
+        for i in range(len(to_multiply)):
+            for j in range(len(to_multiply[i])):
+                for k in range(len(to_multiply[i][j])):
+                    if abs(to_multiply[i][j][k]) < 1e-10:
+                        to_multiply[i][j][k] = 0.0
+        
         T = [[1, 0, 0, 0],
              [0, 1, 0, 0],
              [0, 0, 1, 0],
@@ -100,6 +107,13 @@ class RRPToolbox:
             T = self.matrix_multiply(T, matrix)
             
         return T
+    
+    def get_RRP_Jacobian_Matrix(self, joint_parameters):
+        theta1  = joint_parameters[0]
+        theta2  = joint_parameters[1]
+        d3      = joint_parameters[2]
+        
+        
     
     def Forward_Kinematics(self, joint_parameters):
         if len(joint_parameters) != 3:
