@@ -8,14 +8,13 @@ class TestToolbox:
     
     #initialize function
     def __init__(self, link, joint_limits):
-        self.link = link
-        self.joint_limits = joint_limits
+        self.link               = link
+        self.joint_limits       = joint_limits
+        self.all_joint_position = []             # Initialize with base position note : All position is a local positions
         
-        print("Link:", self.link)
-        print("Joint Limits:", self.joint_limits)
-        
-        self.all_joint_position = []      # Initialize with base position note : All position is a local positions
         self.register_joint_positions(self.link) # local joint position make transformation easier
+        
+        print("Initialization complete. Joint positions registered.")
     
     def DH_transform(self, theta, d, a, alpha):
         ct = math.cos(theta)
@@ -50,10 +49,10 @@ class TestToolbox:
         return (x, y, z)
     
     def register_joint_positions(self, link):
-        pos_1 = self.link_to_position(link[0])
-        pos_2 = self.link_to_position(link[1])
-        pos_3 = self.link_to_position(link[2])
-        pos_4 = self.link_to_position(link[3])
+        pos_1 = self.link_to_position(link[0]) # Joint 1
+        pos_2 = self.link_to_position(link[1]) # Joint 2
+        pos_3 = self.link_to_position(link[2]) # Joint 3
+        pos_4 = self.link_to_position(link[3]) # End Effector
     
         self.all_joint_position.extend([pos_1, pos_2, pos_3, pos_4]) #Joint 1, Joint 2, Joint 3, End Effector
         
@@ -75,29 +74,57 @@ class TestToolbox:
             d     = 0 # Z axis translation
             alpha = 0 # X axis rotation
             a     = 0 # X axis translation
+
+            # Move X axis and Z axis first
             
-            if i == 3 :
-                x += d3  # prismatic joint adjustment
+            if i == 2: # prismatic joint
+                x += d3
+            
+            a = x
+            alpha = 0
+            d = y
+            theta = 0
+            local_transforms.append(self.DH_transform(theta, d, a, alpha))
+            
+            # Rotate X, Move Z and Rotate X back
+            a = 0
+            d = z
+            # Rotate and move according to link order
+            if i == 0:
+                theta = q1 # First joint rotation
+            else:
+                theta = 0  # Need to rotate back to 0 for other joints
+            
+            # Determine alpha based on y position
+            # This Rotate X and move Z if i = 0 then rotate Z for q1
+            if y > 0:
+                alpha = -PI/2
+            else:
+                alpha = PI/2    
+            local_transforms.append(self.DH_transform(theta, d, a, alpha))
+            
+            # If it's the second joint, apply q2 rotation
+            if i == 1:
+                theta = q2
+            else:
+                theta = 0
+            alpha = -alpha
+            local_transforms.append(self.DH_transform(theta, d, a, alpha))
+            
+            # For the end effector, apply fixed transformation and rotate axis to normal axis
+            if i == 3:
+                a = 0
+                d = 0
+                theta = 0
+                alpha = -PI/2
+                local_transforms.append(self.DH_transform(theta, d, a, alpha))
                 
-            if x != 0 and y != 0 and z != 0:
-                if i == 0:
-                    a = x
-                    alpha = 0
-                    d = y
-                    theta = 0
-                
-                    local_transforms.append(self.DH_transform(theta, d, a, alpha))
-                
-                    a = 0
-                    d = z
-                    theta = 0
-                        
-                    if y > 0:
-                        alpha = -PI/2
-                    else:
-                        alpha = PI/2
-                    
-                    local_transforms.append(self.DH_transform(theta, d, a, alpha))
+        # Combine all local transformations
+        T = [[1 if i == j else 0 for j in range(4)] for i in range(4)] # Identity matrix
+        for lt in local_transforms:
+            T = self.matrix_multiply(T, lt)
+            
+        return (T[0][3], T[1][3], T[2][3])  # Return end effector position (x, y, z)
                 
                     
                 
