@@ -208,7 +208,7 @@ class RRPToolbox:
     def Differential_Forward_Kinematics(self, joint_parameters, time):
         J, reduced_J = self.get_RRP_Jacobian_Matrix(joint_parameters)
         
-        end_effector_velocities = (0, 0, 0)
+        end_effector_velocities = [0, 0, 0]
         
         joint_velocities = (joint_parameters[0]/time, joint_parameters[1]/time, joint_parameters[2]/time)
         
@@ -216,12 +216,12 @@ class RRPToolbox:
             for j in range(3):
                 end_effector_velocities[i] += reduced_J[i][j] * joint_velocities[j]
         
-        return end_effector_velocities
+        return tuple(end_effector_velocities)
     
     def Differential_Inverse_Kinematics(self, target_position, time):
         J, reduced_J = self.get_RRP_Jacobian_Matrix((0,0,0))
         
-        joint_velocities = (0, 0, 0)
+        joint_velocities = [0, 0, 0]
         
         target_velocities = (target_position[0]/time, target_position[1]/time, target_position[2]/time)
         
@@ -234,5 +234,5 @@ class RRPToolbox:
         for i in range(3):
             joint_velocities[i] = joint_velocities[i] * time
         
-        return joint_velocities
+        return tuple(joint_velocities)
         
