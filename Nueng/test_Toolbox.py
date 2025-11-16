@@ -143,7 +143,9 @@ class RRPToolbox:
     def get_RRP_Jacobian_Matrix(self, joint_parameters):
         theta1  = self.deg_to_rad(joint_parameters[0])
         theta2  = self.deg_to_rad(joint_parameters[1])
-        d3      = self.deg_to_rad(joint_parameters[2])
+        d3      = joint_parameters[2]
+        
+        # print("Calculating Jacobian Matrix for Joint Parameters (radians):", (theta1, theta2, d3))
         
         c1      = math.cos(theta1)
         s1      = math.sin(theta1)
@@ -162,9 +164,9 @@ class RRPToolbox:
         y3 = self.joint_local_positions[3][1]  # End Effector y
         z3 = self.joint_local_positions[3][2]  # End Effector z
         
-        J = [[ -s1*x1 + c1*y1 + c1*y2 + c1*y3 - s1*c2*(d3+x3) - s1*c2*x2 + s1*s2*z2 + s1*s2*z3, -c1*s2*(d3+x3) - c1*s2*x2 - c1*c2*z2 - c1*c2*z3, c1*c2],
-             [  c1*x1 + s1*y1 + s1*y2 + s1*y3 - c1*c2*(d3+x3) + c1*c2*x2 - c1*s2*z2 - c1*s2*z3, -s1*s2*(d3+x3) - s1*s2*x2 - s1*c2*z2 - s1*c2*z3, s1*c2],
-             [                                                                               0,              c2*(d3+x3) - s2*z2 - s2*z3 + c2*x2,    s2],
+        J = [[ -s1*x1 + c1*(y1 + y2 + y3) - s1*c2*(d3+x3+x2) + s1*s2*(z2 + z3),   -c1*s2*(d3+x2+x3) - c1*c2*(z2+z3), c1*c2],
+             [  c1*x1 + s1*(y1 + y2 + y3) + c1*c2*(d3+x3+x2) - c1*s2*(z2 + z3),  -s1*s2*(d3+x2+x3) - s1*c2*(z2+z3), s1*c2],
+             [                                                                               0,              c2*(d3+x2+x3) - s2*(z2 + z3) ,    s2],
              [                                                                               0,                                               0,     0],
              [                                                                               0,                                               0,     0],
              [                                                                               1,                                               1,     0]]
@@ -236,38 +238,26 @@ class RRPToolbox:
         
         return (theta1, theta2, d3)
         
-    def Differential_Forward_Kinematics(self, joint_parameters, time):
-        J, reduced_J = self.get_RRP_Jacobian_Matrix(joint_parameters)
+    def Differential_Forward_Kinematics(self, joint_velocity_parameters):
+        J, reduced_J, inv_reduced_J = self.get_RRP_Jacobian_Matrix(joint_velocity_parameters)
         
-        end_effector_velocities = [0, 0, 0]
+        joint_velocities = [[self.deg_to_rad(joint_velocity_parameters[0])],
+                            [self.deg_to_rad(joint_velocity_parameters[1])],
+                            [joint_velocity_parameters[2]]]
         
-        joint_velocities = (joint_parameters[0]/time, joint_parameters[1]/time, joint_parameters[2]/time)
+        result = self.matrix_multiply(reduced_J, joint_velocities)
         
-        for i in range(3):
-            for j in range(3):
-                end_effector_velocities[i] += reduced_J[i][j] * joint_velocities[j]
+        end_effector_velocities = (result[0][0], result[1][0], result[2][0])
         
-        return tuple(end_effector_velocities)
+        return end_effector_velocities
     
-    def Differential_Inverse_Kinematics(self, target_position, time):
-        current_position = self.Forward_Kinematics((0, 0, 0))
-        
-        delta_x = target_position[0] - current_position[0]
-        delta_y = target_position[1] - current_position[1]
-        delta_z = target_position[2] - current_position[2]
-        
-        end_effector_velocities = (delta_x / time, delta_y / time, delta_z / time)
-        
-        J, reduced_J, inv_reduced_J = self.get_RRP_Jacobian_Matrix((0, 0, 0))
-        
-        joint_velocities = [0, 0, 0]
-        
-        for i in range(3):
-            for j in range(3):
-                joint_velocities[i] += inv_reduced_J[i][j] * end_effector_velocities[j]
-        
-        for i in range(3):
-            joint_velocities[i] = -joint_velocities[i]
+    def Differential_Inverse_Kinematics(self, target_velocities):
+        J, reduced_J, inv_reduced_J = self.get_RRP_Jacobian_Matrix((0,0,0))
+        end_effector_velocities = [[self.deg_to_rad(target_velocities[0])],
+                                   [self.deg_to_rad(target_velocities[1])],
+                                   [target_velocities[2]]]
+        result = self.matrix_multiply(inv_reduced_J, end_effector_velocities)
+        joint_velocities = [result[0][0], result[1][0], result[2][0]]
         
         return tuple(joint_velocities)
         
