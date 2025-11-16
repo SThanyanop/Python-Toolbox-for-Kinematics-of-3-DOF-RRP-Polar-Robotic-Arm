@@ -260,15 +260,71 @@ class RRPToolbox:
         theta2_range = [theta2_min + (theta2_max - theta2_min) * i / (theta2_samples - 1) for i in range(theta2_samples)]
         d3_range = [d3_min + (d3_max - d3_min) * i / (d3_samples - 1) for i in range(d3_samples)]
         
+        # Get link parameters from link_params
+        # link_params structure: [[(x1a, y1a, z1a), (x1b, y1b, z1b)], [(x2a, y2a, z2a)], [(x3a, y3a, z3a)]]
         for theta1 in theta1_range:
             for theta2 in theta2_range:
                 for d3 in d3_range:
-                    try:
-                        position = self.Forward_Kinematics([theta1, theta2, d3])
-                        workspace_points.append(position)
-                    except:
-                        # Skip invalid configurations
-                        pass
+                    # Convert to radians
+                    th1_rad = self.deg_to_rad(theta1)
+                    th2_rad = self.deg_to_rad(theta2)
+                    
+                    c1 = math.cos(th1_rad)
+                    s1 = math.sin(th1_rad)
+                    
+                    # Start from base at origin
+                    current_x, current_y, current_z = 0, 0, 0
+                    
+                    # Apply Link 1 segments (rotated by theta1 around Z)
+                    for segment in self.link_params[0]:
+                        segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
+                        rotated_x = c1 * segment_x - s1 * segment_y
+                        rotated_y = s1 * segment_x + c1 * segment_y
+                        rotated_z = segment_z
+                        
+                        current_x += rotated_x
+                        current_y += rotated_y
+                        current_z += rotated_z
+                    
+                    # Apply Link 2 segments (rotated by theta1 around Z)
+                    for segment in self.link_params[1]:
+                        segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
+                        rotated_x = c1 * segment_x - s1 * segment_y
+                        rotated_y = s1 * segment_x + c1 * segment_y
+                        rotated_z = segment_z
+                        
+                        current_x += rotated_x
+                        current_y += rotated_y
+                        current_z += rotated_z
+                    
+                    # Apply Prismatic joint (d3) with direction controlled by theta2
+                    # Direction: [sin(theta2)*cos(theta1), sin(theta2)*sin(theta1), cos(theta2)]
+                    c2 = math.cos(th2_rad)
+                    s2 = math.sin(th2_rad)
+                    
+                    prismatic_x = d3 * s2 * c1
+                    prismatic_y = d3 * s2 * s1
+                    prismatic_z = d3 * c2
+                    
+                    current_x += prismatic_x
+                    current_y += prismatic_y
+                    current_z += prismatic_z
+                    
+                    # Apply End effector segments
+                    for segment in self.link_params[2]:
+                        segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
+                        rotated_x = c1 * segment_x - s1 * segment_y
+                        rotated_y = s1 * segment_x + c1 * segment_y
+                        rotated_z = segment_z
+                        
+                        current_x += rotated_x
+                        current_y += rotated_y
+                        current_z += rotated_z
+                    
+                    workspace_points.append((current_x, current_y, current_z))
         
         return workspace_points
     
@@ -329,7 +385,7 @@ class RRPToolbox:
         
         return singularity_positions, singularity_configs
     
-    def plot_workspace_3d(self, theta1_samples=12, theta2_samples=12, d3_samples=6):
+    def plot_workspace_3d(self, theta1_samples=25, theta2_samples=25, d3_samples=15):
         """
         Plot the robot workspace in 3D using matplotlib with convex hull.
         Shows the edge/boundary, robot links, joints, end effector, and singularities.
@@ -367,8 +423,8 @@ class RRPToolbox:
         
         # Combine workspace points with singularities for complete hull
         # COMMENTED OUT: Testing workspace without singularities
-        # all_points = workspace_points + singularity_positions
-        all_points = workspace_points
+        all_points = workspace_points + singularity_positions
+        # all_points = workspace_points
         
         if len(all_points) < 4:
             print("Not enough points to compute convex hull (need at least 4).")
@@ -380,6 +436,7 @@ class RRPToolbox:
         # Compute convex hull
         try:
             hull = ConvexHull(points)
+            # hull = points
         except Exception as e:
             print(f"Could not compute convex hull: {e}")
             return
@@ -425,13 +482,14 @@ class RRPToolbox:
         slider_azim.on_changed(update_view)
         btn_toggle.on_clicked(toggle_vertices)
         
-        # Plot the convex hull surface with transparent face colors
+        # Plot the convex hull surface with transparent face colors (hollow - no top/bottom caps)
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
         for simplex in hull.simplices:
             # Get the three vertices of each triangle
             triangle = points[simplex]
             
             # Plot triangle faces with transparency (light blue fill)
-            from mpl_toolkits.mplot3d.art3d import Poly3DCollection
             verts = [triangle]
             face = Poly3DCollection(verts, alpha=0.15, facecolor='cyan', edgecolor='blue', linewidth=0.5)
             ax.add_collection3d(face)
