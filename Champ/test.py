@@ -485,9 +485,25 @@ class RRPToolbox:
         # Plot the convex hull surface with transparent face colors (hollow - no top/bottom caps)
         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         
+        # Identify extreme Z values to filter out top/bottom faces
+        z_values = points[:, 2]
+        z_min = np.min(z_values)
+        z_max = np.max(z_values)
+        z_range = z_max - z_min
+        z_threshold = z_range * 0.05  # 15% from top or bottom
+        
         for simplex in hull.simplices:
             # Get the three vertices of each triangle
             triangle = points[simplex]
+            
+            # Check if triangle is at top or bottom
+            triangle_z_values = triangle[:, 2]
+            is_top = np.all(triangle_z_values > (z_max - z_threshold))
+            is_bottom = np.all(triangle_z_values < (z_min + z_threshold))
+            
+            # Skip top and bottom faces
+            if is_top or is_bottom:
+                continue
             
             # Plot triangle faces with transparency (light blue fill)
             verts = [triangle]
@@ -498,6 +514,21 @@ class RRPToolbox:
             ax.plot3D(*triangle[[0, 1], :].T, 'b-', linewidth=1, alpha=0.6)
             ax.plot3D(*triangle[[1, 2], :].T, 'b-', linewidth=1, alpha=0.6)
             ax.plot3D(*triangle[[2, 0], :].T, 'b-', linewidth=1, alpha=0.6)
+        
+        # Connect edges with same XY coordinates (vertical lines)
+        hull_points = points[hull.vertices]
+        xy_tolerance = 0.1  # tolerance for matching XY coordinates
+        
+        # Find pairs of vertices with same XY but different Z
+        for i, pt1 in enumerate(hull_points):
+            for j, pt2 in enumerate(hull_points):
+                if i < j:
+                    # Check if XY coordinates are close
+                    xy_dist = np.sqrt((pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2)
+                    if xy_dist < xy_tolerance:
+                        # Draw vertical line connecting these points
+                        ax.plot3D([pt1[0], pt2[0]], [pt1[1], pt2[1]], [pt1[2], pt2[2]], 
+                                 'g-', linewidth=2, alpha=0.7)
         
         # Plot workspace hull vertices colored by Z height
         z_values = points[hull.vertices, 2]  # Get Z coordinates of hull vertices
@@ -626,5 +657,5 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(12,8,10)
+    toolbox.plot_workspace_3d(12,8,5)
 
