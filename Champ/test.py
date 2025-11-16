@@ -1,7 +1,8 @@
-# Import Necessary Libraries
+"""
+RRP Robotic Arm Visualization Toolbox
+A comprehensive toolbox for simulating and visualizing an RRP (Revolute-Revolute-Prismatic) robotic arm.
+"""
 import math
-
-#Define parameters
 PI = math.pi
 
 class RRPToolbox:
@@ -534,16 +535,16 @@ if __name__ == "__main__":
         [(0, 0, 1)]   # End Effector
     ]
     joint_limits = [
-        (0, 90),  # theta1 limits
-        (0, 45),    # theta2 limits
-        (-2, 4)       # d3 limits
+        (0, 10),  # theta1 limits
+        (0, 10),    # theta2 limits
+        (0, 4)       # d3 limits
     ]
     
     # Create an instance
     toolbox = RRPToolbox(link_params, joint_limits)
     
     # Example: Forward Kinematics (use valid joint parameters within limits)
-    joint_parameters = [45, 0, 2.5]  # theta1=45°, theta2=0°, d3=2.5
+    joint_parameters = [10, 0, 2.5]  # theta1=45°, theta2=0°, d3=2.5
     position = toolbox.Forward_Kinematics(joint_parameters)
     print("End Effector Position:", position)
     
@@ -555,7 +556,7 @@ if __name__ == "__main__":
         print("Inverse Kinematics Error:", e)
     
     # Example: Get Jacobian Matrix
-    J, reduced_J = toolbox.get_RRP_Jacobian_Matrix([45, 0, 2.5])
+    J, reduced_J = toolbox.get_RRP_Jacobian_Matrix([10, 0, 2.5])
     print("Reduced Jacobian Matrix:", reduced_J)
     
     # Example: Get workspace points
@@ -565,5 +566,5 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(8,8,4)
+    toolbox.plot_workspace_3d(12,8,10)
 
