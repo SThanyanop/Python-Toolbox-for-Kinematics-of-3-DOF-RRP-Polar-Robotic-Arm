@@ -56,6 +56,30 @@ class RRPToolbox:
                     result[i][j] += A[i][k] * B[k][j]
         return result
     
+    def Inverse_Matrix(self, matrix):
+        size = len(matrix)
+        identity = [[float(i == j) for i in range(size)] for j in range(size)]
+        augmented = [row_a + row_b for row_a, row_b in zip(matrix, identity)]
+        
+        for i in range(size):
+            pivot = augmented[i][i]
+            if pivot == 0:
+                for j in range(i + 1, size):
+                    if augmented[j][i] != 0:
+                        augmented[i], augmented[j] = augmented[j], augmented[i]
+                        pivot = augmented[i][i]
+                        break
+            for k in range(2 * size):
+                augmented[i][k] /= pivot
+            for j in range(size):
+                if j != i:
+                    factor = augmented[j][i]
+                    for k in range(2 * size):
+                        augmented[j][k] -= factor * augmented[i][k]
+        
+        inverse = [row[size:] for row in augmented]
+        return inverse
+    
     def DH_Martrix_Transform(self, a, alpha, d, theta):
         theta = self.deg_to_rad(theta)
         alpha = self.deg_to_rad(alpha)
@@ -147,7 +171,7 @@ class RRPToolbox:
         
         reduced_J = [J[0][:], J[1][:], J[2][:]]
         
-        return J,reduced_J
+        return J,reduced_J, self.Inverse_Matrix(reduced_J)
     
     def Forward_Kinematics(self, joint_parameters):
         if len(joint_parameters) != 3:
@@ -185,16 +209,23 @@ class RRPToolbox:
         offset_theta2 = math.atan2(z3-z1, math.sqrt((x3-x1)**2 + (y3-y1)**2))
         theta2 = math.atan2(z - z1, math.sqrt((x - x1)**2 + (y - y1)**2)) - offset_theta2
         
+        
         z1 = self.joint_local_positions[1][2]  # Link 1 z
         z2 = self.joint_local_positions[2][2]  # Link 2 z
         z3 = self.joint_local_positions[3][2]  # End Effector z
         x2 = self.joint_local_positions[2][0]  # Link 2
         x3 = self.joint_local_positions[3][0]  # End Effector
         
-        d3 = ((z - z1 - math.cos(theta2)*z2 - math.cos(theta2)*z3 - math.sin(theta2)*x2) / math.sin(theta2)) - x3
+        if math.sin(theta2) == 0:
+            x3 = self.joint_global_positions[3][0]  # End Effector x
+            y3 = self.joint_global_positions[3][1]  # End Effector y
+            d3 = math.sqrt((x - x3)**2 + (y - y3)**2)
+        else:
+            d3 = ((z - z1 - math.cos(theta2)*z2 - math.cos(theta2)*z3 - math.sin(theta2)*x2) / math.sin(theta2)) - x3
         
         theta1 = self.rad_to_deg(theta1)
         theta2 = self.rad_to_deg(theta2)
+    
         
         if not (self.joint_limits[0][0] <= theta1 <= self.joint_limits[0][1]):
             raise ValueError(f"Calculated theta1 {theta1} is out of limits: {self.joint_limits[0]}")
@@ -219,20 +250,24 @@ class RRPToolbox:
         return tuple(end_effector_velocities)
     
     def Differential_Inverse_Kinematics(self, target_position, time):
-        J, reduced_J = self.get_RRP_Jacobian_Matrix((0,0,0))
+        current_position = self.Forward_Kinematics((0, 0, 0))
+        
+        delta_x = target_position[0] - current_position[0]
+        delta_y = target_position[1] - current_position[1]
+        delta_z = target_position[2] - current_position[2]
+        
+        end_effector_velocities = (delta_x / time, delta_y / time, delta_z / time)
+        
+        J, reduced_J, inv_reduced_J = self.get_RRP_Jacobian_Matrix((0, 0, 0))
         
         joint_velocities = [0, 0, 0]
         
-        target_velocities = (target_position[0]/time, target_position[1]/time, target_position[2]/time)
-        
         for i in range(3):
             for j in range(3):
-                if reduced_J[i][j] == 0:
-                    continue
-                joint_velocities[j] += target_velocities[i] / reduced_J[i][j]
+                joint_velocities[i] += inv_reduced_J[i][j] * end_effector_velocities[j]
         
         for i in range(3):
-            joint_velocities[i] = joint_velocities[i] * time
+            joint_velocities[i] = -joint_velocities[i]
         
         return tuple(joint_velocities)
         
