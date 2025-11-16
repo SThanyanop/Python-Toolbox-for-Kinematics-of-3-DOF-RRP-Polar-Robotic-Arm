@@ -464,7 +464,9 @@ class RRPToolbox:
                       edgecolors='black', linewidth=1.5)
         
         # Plot robot configuration at a specific joint angle
-        joint_params = [(self.joint_limits[0][0]+self.joint_limits[0][1])/2, (self.joint_limits[1][0]+self.joint_limits[1][1])/2, (self.joint_limits[2][0]+self.joint_limits[2][1])/2]  # Sample configuration
+        # joint_params = [(self.joint_limits[0][0]+self.joint_limits[0][1])/2, (self.joint_limits[1][0]+self.joint_limits[1][1])/2, (self.joint_limits[2][0]+self.joint_limits[2][1])/2]  # Sample configuration
+        # joint_params = [self.joint_limits[0][0], self.joint_limits[1][0], self.joint_limits[2][0]]  # Min configuration
+        joint_params = [0,30,0.3]
         
         # Get all joint positions for this configuration
         result_matrix = self.get_RRP_Tramsform_Matrix(joint_params)
@@ -530,30 +532,30 @@ class RRPToolbox:
 if __name__ == "__main__":
     # Define link parameters and joint limits
     link_params = [
-        [(0, 0, 1)],  # Link 1
-        [(1, 0, 0)],  # Link 2
-        [(0, 0, 1)]   # End Effector
+        [ (5, 0, 0), (0, 0, 5) ],  # Link 1
+        [(3, 0, 0)],  # Link 2
+        [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (0, 10),  # theta1 limits
-        (0, 10),    # theta2 limits
-        (0, 4)       # d3 limits
+        (-180, 180),  # theta1 limits
+        (0, 180),    # theta2 limits
+        (0, 2)       # d3 limits
     ]
     
     # Create an instance
     toolbox = RRPToolbox(link_params, joint_limits)
     
     # Example: Forward Kinematics (use valid joint parameters within limits)
-    joint_parameters = [10, 0, 2.5]  # theta1=45°, theta2=0°, d3=2.5
-    position = toolbox.Forward_Kinematics(joint_parameters)
-    print("End Effector Position:", position)
+    # joint_parameters = [10, 0, 2.5]  # theta1=45°, theta2=0°, d3=2.5
+    # position = toolbox.Forward_Kinematics(joint_parameters)
+    # print("End Effector Position:", position)
     
     # Example: Inverse Kinematics (use position from forward kinematics to ensure it's valid)
-    try:
-        joint_angles = toolbox.Inverse_Kinematics(position)
-        print("Joint Parameters:", joint_angles)
-    except ValueError as e:
-        print("Inverse Kinematics Error:", e)
+    # try:
+    #     joint_angles = toolbox.Inverse_Kinematics(position)
+    #     print("Joint Parameters:", joint_angles)
+    # except ValueError as e:
+    #     print("Inverse Kinematics Error:", e)
     
     # Example: Get Jacobian Matrix
     J, reduced_J = toolbox.get_RRP_Jacobian_Matrix([10, 0, 2.5])
