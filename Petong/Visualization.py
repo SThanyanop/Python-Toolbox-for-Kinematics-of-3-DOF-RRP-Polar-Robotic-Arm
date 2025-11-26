@@ -25,15 +25,6 @@ class RRPRobot:
     def __init__(self, link_1_shape=None, link_2_shape=None, end_effector_shape=None, d3_max=1.0):
         """
         Initialize RRP robot parameters with custom link shapes.
-        
-        Args:
-            link_1_shape: List of (x, y, z) tuples defining link 1 path segments
-                         Default: [(0, 0, 1.0)] - straight up 1m
-            link_2_shape: List of (x, y, z) tuples defining link 2 path segments
-                         Default: [(1.0, 0, 0)] - straight horizontal 1m
-            end_effector_shape: List of (x, y, z) tuples defining end effector path segments
-                               Default: [(0, 0, 0.2)] - small vertical extension
-            d3_max: Maximum extension of prismatic joint (meters)
         """
         # Set default shapes if not provided
         self.link_1_shape = link_1_shape if link_1_shape is not None else [(0, 0, 1.0)]
@@ -43,11 +34,12 @@ class RRPRobot:
         # Calculate link lengths from shapes
         self.L1 = self._calculate_link_length(self.link_1_shape)
         self.L2 = self._calculate_link_length(self.link_2_shape)
+        self.ee_length = self._calculate_link_length(self.end_effector_shape)
         self.d3_max = d3_max
         
         # Joint limits
         self.theta1_limits = (-180, 180)  # degrees
-        self.theta2_limits = (0, 180)     # degrees (0° = vertical/parallel to Z, 90° = horizontal)
+        self.theta2_limits = (0, 180)     # degrees
         self.d3_limits = (0, d3_max)      # meters
     
     def _calculate_link_length(self, shape):
@@ -57,40 +49,59 @@ class RRPRobot:
             total_length += np.linalg.norm(segment)
         return total_length
     
-    def dh_transform(self, theta, d, a, alpha):
+    def inverse_kinematics(self, x, y, z):
         """
-        Compute homogeneous transformation matrix using DH parameters.
+        Compute inverse kinematics for RRP robot to reach position [x, y, z] at the END EFFECTOR.
         
         Args:
-            theta: Joint angle (radians)
-            d: Link offset
-            a: Link length
-            alpha: Link twist (radians)
+            x, y, z: Target position coordinates at the end effector tip (meters)
         
         Returns:
-            4x4 transformation matrix
+            (theta1, theta2, d3) tuple or None if unreachable
         """
-        ct, st = np.cos(theta), np.sin(theta)
-        ca, sa = np.cos(alpha), np.sin(alpha)
+        # Calculate theta1 (rotation around z-axis)
+        theta1 = np.degrees(np.arctan2(y, x))
+        th1_rad = np.radians(theta1)
         
-        return np.array([
-            [ct, -st*ca,  st*sa, a*ct],
-            [st,  ct*ca, -ct*sa, a*st],
-            [0,   sa,     ca,    d   ],
-            [0,   0,      0,     1   ]
-        ])
+        # Get the position after link1 and link2
+        # Link 1 goes up by L1
+        # Link 2 extends horizontally by L2 in the direction of theta1
+        link2_end_x = self.L2 * np.cos(th1_rad)
+        link2_end_y = self.L2 * np.sin(th1_rad)
+        link2_end_z = self.L1
+        
+        # Vector from link2 end to target position
+        dx = x - link2_end_x
+        dy = y - link2_end_y
+        dz = z - link2_end_z
+        
+        # Distance in XY plane and total 3D distance
+        r_xy = np.sqrt(dx**2 + dy**2)
+        total_distance = np.sqrt(dx**2 + dy**2 + dz**2)
+        
+        # Calculate theta2 (angle of the prismatic joint + end effector direction)
+        if total_distance > 0.001:
+            theta2 = np.degrees(np.arctan2(r_xy, dz))
+        else:
+            theta2 = 0
+        
+        # The total distance must equal d3 + end_effector contribution
+        # Since end effector follows the same direction as d3, we subtract its length
+        d3 = total_distance - self.ee_length
+        
+        # Check if position is reachable
+        if d3 > self.d3_max or d3 < 0:
+            print(f"Warning: Position [{x:.2f}, {y:.2f}, {z:.2f}] unreachable. d3={d3:.2f}m (max={self.d3_max}m)")
+            d3 = np.clip(d3, 0, self.d3_max)
+        
+        # Ensure theta2 is within limits
+        theta2 = np.clip(theta2, *self.theta2_limits)
+        
+        return theta1, theta2, d3
     
     def forward_kinematics(self, theta1, theta2, d3):
         """
         Compute forward kinematics for RRP robot with custom link shapes.
-        
-        Args:
-            theta1: Base rotation angle (degrees)
-            theta2: Second joint angle (degrees) - controls prismatic joint direction
-            d3: Prismatic joint extension (meters)
-        
-        Returns:
-            List of joint positions for all link segments
         """
         # Convert to radians
         th1 = np.radians(theta1)
@@ -114,7 +125,6 @@ class RRPRobot:
             positions.append(current_pos.copy())
         
         # Link 2: Apply shape segments with theta1 rotation
-        link2_start = current_pos.copy()
         for segment in self.link_2_shape:
             segment_vec = np.array(segment)
             rotated_segment = Rz(th1) @ segment_vec
@@ -122,7 +132,6 @@ class RRPRobot:
             positions.append(current_pos.copy())
         
         # Prismatic joint (d3): Extension in direction controlled by theta2
-        link3_start = current_pos.copy()
         direction = np.array([
             np.sin(th2) * np.cos(th1),
             np.sin(th2) * np.sin(th1),
@@ -131,32 +140,16 @@ class RRPRobot:
         current_pos = current_pos + d3 * direction
         positions.append(current_pos.copy())
         
-        # End effector: Apply shape segments with theta1 and theta2 rotation
+        # End effector: Apply shape segments in the same direction as d3
         for segment in self.end_effector_shape:
-            segment_vec = np.array(segment)
-            # First rotate by theta1, then orient along d3 direction
-            rotated_segment = Rz(th1) @ segment_vec
-            # Scale by direction for proper orientation
-            oriented_segment = rotated_segment * np.array([np.sin(th2), np.sin(th2), np.cos(th2)])
-            current_pos = current_pos + oriented_segment
+            segment_length = np.linalg.norm(segment)
+            current_pos = current_pos + segment_length * direction
             positions.append(current_pos.copy())
         
         return np.array(positions)
     
     def plot_robot(self, theta1=0, theta2=0, d3=0, ax=None, show_frame=True):
-        """
-        Plot the robot arm in 3D.
-        
-        Args:
-            theta1: Base rotation (degrees)
-            theta2: Second joint angle (degrees)
-            d3: Prismatic extension (meters)
-            ax: Matplotlib 3D axis (creates new if None)
-            show_frame: Whether to show coordinate frames
-        
-        Returns:
-            Matplotlib axis object
-        """
+        """Plot the robot arm in 3D."""
         if ax is None:
             fig = plt.figure(figsize=(10, 8))
             ax = fig.add_subplot(111, projection='3d')
@@ -172,36 +165,34 @@ class RRPRobot:
         # Plot Link 1
         link1_positions = positions[:link1_end_idx+1]
         ax.plot(link1_positions[:, 0], link1_positions[:, 1], link1_positions[:, 2], 
-                'o-', linewidth=3, markersize=6, color='steelblue', label='Link 1')
+                'o-', linewidth=3, markersize=8, color='steelblue', label='Link 1')
         
         # Plot Link 2
         link2_positions = positions[link1_end_idx:link2_end_idx+1]
         ax.plot(link2_positions[:, 0], link2_positions[:, 1], link2_positions[:, 2], 
-                'o-', linewidth=3, markersize=6, color='coral', label='Link 2')
+                'o-', linewidth=3, markersize=8, color='coral', label='Link 2')
         
         # Plot Prismatic Joint (d3)
         d3_positions = positions[link2_end_idx:d3_end_idx+1]
         ax.plot(d3_positions[:, 0], d3_positions[:, 1], d3_positions[:, 2], 
-                'o-', linewidth=4, markersize=6, color='green', label='Prismatic (d3)')
+                'o-', linewidth=4, markersize=8, color='green', label='Prismatic (d3)')
         
         # Plot End Effector
         if len(self.end_effector_shape) > 0:
             ee_positions = positions[d3_end_idx:]
             ax.plot(ee_positions[:, 0], ee_positions[:, 1], ee_positions[:, 2], 
-                    's-', linewidth=2, markersize=8, color='red', label='End Effector')
+                    's-', linewidth=2, markersize=10, color='red', label='End Effector')
         
-        # Plot joints
+        # Plot base joint
         ax.scatter(positions[0, 0], positions[0, 1], positions[0, 2], 
                   c='red', s=150, marker='o', label='Base', zorder=5)
-        # ax.scatter(positions[-1, 0], positions[-1, 1], positions[-1, 2], 
-        #           c='darkred', s=150, marker='s', label='Tool Point', zorder=5)
         
         # Plot coordinate frames
         if show_frame:
             self._plot_frame(ax, np.eye(4), scale=0.3, label='Base')
         
         # Set plot properties
-        max_reach = self.L1 + self.L2 + self.d3_max + 0.5
+        max_reach = self.L1 + self.L2 + self.d3_max + self.ee_length + 0.5
         ax.set_xlim([-max_reach, max_reach])
         ax.set_ylim([-max_reach, max_reach])
         ax.set_zlim([0, max_reach*1.5])
@@ -264,124 +255,111 @@ class RRPRobot:
         self.plot_robot(theta1_init, theta2_init, d3_init, ax=ax)
         plt.show()
     
-    def workspace_analysis(self, n_samples=20):
-        """
-        Visualize the robot's workspace by sampling joint configurations.
-        
-        Args:
-            n_samples: Number of samples per joint
-        """
-        fig = plt.figure(figsize=(12, 5))
-        
-        # Generate samples
-        theta1_samples = np.linspace(*self.theta1_limits, n_samples)
-        theta2_samples = np.linspace(*self.theta2_limits, n_samples)
-        d3_samples = np.linspace(*self.d3_limits, n_samples)
-        
-        workspace_points = []
-        for th1 in theta1_samples:
-            for th2 in theta2_samples:
-                for d3 in d3_samples:
-                    pos = self.forward_kinematics(th1, th2, d3)
-                    workspace_points.append(pos[-1])
-        
-        workspace_points = np.array(workspace_points)
-        
-        # 3D workspace plot
-        ax1 = fig.add_subplot(121, projection='3d')
-        ax1.scatter(workspace_points[:, 0], workspace_points[:, 1], 
-                   workspace_points[:, 2], c=workspace_points[:, 2], 
-                   cmap='viridis', alpha=0.3, s=1)
-        ax1.set_xlabel('X (m)')
-        ax1.set_ylabel('Y (m)')
-        ax1.set_zlabel('Z (m)')
-        ax1.set_title('3D Workspace')
-        
-        # Top view (XY plane)
-        ax2 = fig.add_subplot(122)
-        ax2.scatter(workspace_points[:, 0], workspace_points[:, 1], 
-                   c=workspace_points[:, 2], cmap='viridis', alpha=0.3, s=1)
-        ax2.set_xlabel('X (m)')
-        ax2.set_ylabel('Y (m)')
-        ax2.set_title('Workspace - Top View (XY)')
-        ax2.axis('equal')
-        ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.show()
-    
-    def animate_trajectory(self, trajectory, interval=50):
+    def animate_trajectory(self, trajectory, interval=50, trajectory_type='joint'):
         """
         Animate robot following a trajectory.
-        
-        Args:
-            trajectory: List of [theta1, theta2, d3] configurations
-            interval: Time between frames (ms)
         """
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
         
+        # Convert position trajectory to joint trajectory if needed
+        if trajectory_type == 'position':
+            joint_trajectory = []
+            for pos in trajectory:
+                x, y, z = pos
+                joint_config = self.inverse_kinematics(x, y, z)
+                joint_trajectory.append(joint_config)
+            
+            # Calculate actual end effector positions from forward kinematics
+            actual_ee_path = []
+            for joint_config in joint_trajectory:
+                positions = self.forward_kinematics(*joint_config)
+                actual_ee_path.append(positions[-1])  # Last position is end effector
+            
+            path_points = np.array(actual_ee_path)
+        else:
+            joint_trajectory = trajectory
+            # Calculate end effector path for joint trajectory
+            actual_ee_path = []
+            for joint_config in joint_trajectory:
+                positions = self.forward_kinematics(*joint_config)
+                actual_ee_path.append(positions[-1])
+            path_points = np.array(actual_ee_path)
+        
         def update_frame(frame):
             ax.cla()
-            theta1, theta2, d3 = trajectory[frame]
+            theta1, theta2, d3 = joint_trajectory[frame]
             self.plot_robot(theta1, theta2, d3, ax=ax, show_frame=False)
-            ax.set_title(f'Frame {frame+1}/{len(trajectory)}\n' + 
-                        f'θ1={theta1:.1f}°, θ2={theta2:.1f}°, d3={d3:.2f}m')
+            
+            # Get all robot positions
+            positions = self.forward_kinematics(theta1, theta2, d3)
+            
+            # The end effector position is the last position
+            ee_pos = positions[-1]
+            
+            # Plot the actual end effector path
+            ax.plot(path_points[:frame+1, 0], path_points[:frame+1, 1], 
+                   path_points[:frame+1, 2], 'r--', linewidth=2, 
+                   alpha=0.5, label='End Effector Path')
+            # Plot the star at the current end effector position
+            ax.scatter(path_points[frame, 0], path_points[frame, 1], 
+                      path_points[frame, 2])
+            
+            ax.set_title(f'Frame {frame+1}/{len(joint_trajectory)}\n' + 
+                        f'θ1={theta1:.1f}°, θ2={theta2:.1f}°, d3={d3:.2f}m\n' +
+                        f'End Effector: [{ee_pos[0]:.2f}, {ee_pos[1]:.2f}, {ee_pos[2]:.2f}]')
+            ax.legend(loc='upper right')
         
-        anim = FuncAnimation(fig, update_frame, frames=len(trajectory), 
+        anim = FuncAnimation(fig, update_frame, frames=len(joint_trajectory), 
                            interval=interval, repeat=True)
         plt.show()
         return anim
 
 
-# Example usage and demonstrations
+# Example usage
 if __name__ == "__main__":
-    print("RRP Robotic Arm Visualization Toolbox")
+    print("RRP Robotic Arm - Fixed Inverse Kinematics")
     print("=" * 50)
+
+    # Link 1
+    link_1 = [(5, 0, 0), (0, 0, 5)]
     
-    # Example: Custom link shapes
-    # Link 1: Go up 5m in Z, then 5m in X
-    link_1 = [ (5, 0, 0), (0, 0, 5) ]
-    
-    # Link 2: Go 3m in X, then 2m in Y
+    # Link 2
     link_2 = [(3, 0, 0)]
     
-    # End effector: Small gripper shape
-    end_effector = [(0, 0, 0)]
+    # End effector
+    end_effector = [(0, 0, 0.5)]  
     
     # Create robot with custom shapes
     robot = RRPRobot(
         link_1_shape=link_1,
         link_2_shape=link_2,
         end_effector_shape=end_effector,
-        d3_max=2.0
+        d3_max=11.0
     )
     
     print(f"\nRobot Configuration:")
-    print(f"  Link 1 shape: {link_1}")
-    print(f"  Link 1 total length: {robot.L1:.2f}m")
-    print(f"  Link 2 shape: {link_2}")
-    print(f"  Link 2 total length: {robot.L2:.2f}m")
-    print(f"  End effector shape: {end_effector}")
+    print(f"  Link 1 length: {robot.L1:.2f}m")
+    print(f"  Link 2 length: {robot.L2:.2f}m")
+    print(f"  End effector length: {robot.ee_length:.2f}m")
     
-    # Example 1: Interactive control
+    # Interactive control
     print("\n1. Launching interactive control...")
     print("   Use sliders to control joint angles and prismatic extension")
     robot.interactive_plot()
+
+    # Position-based trajectory
+    print("\nCreating position-based trajectory...")
     
-    # Example 2: Workspace analysis (uncomment to use)
-    # print("\n2. Computing workspace...")
-    # robot.workspace_analysis(n_samples=15)
+    position_trajectory = [
+        [2, 2, 3],
+        [1, 1, 1],
+        [-1, -1, -1],
+        [2, 2, 3],
+    ]
     
-    # Example 3: Trajectory animation (uncomment to use)
-    # print("\n3. Creating trajectory animation...")
-    # trajectory = []
-    # for t in np.linspace(0, 2*np.pi, 50):
-    #     theta1 = 45 * np.sin(t)
-    #     theta2 = 30 * np.cos(t)
-    #     d3 = 0.4 + 0.2 * np.sin(2*t)
-    #     trajectory.append([theta1, theta2, d3])
-    # robot.animate_trajectory(trajectory)
+    print("Target positions:")
+    for i, pos in enumerate(position_trajectory):
+        print(f"  Point {i+1}: {pos}")
     
-    print("\n" + "=" * 50)
-    print("Toolbox demonstration complete!")
+    robot.animate_trajectory(position_trajectory, interval=500, trajectory_type='position')
