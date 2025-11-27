@@ -426,3 +426,4 @@ if __name__ == "__main__":
     
     robot.animate_trajectory(position_trajectory, total_time=total_time, 
                            trajectory_type='position', fps=30)
+                           
