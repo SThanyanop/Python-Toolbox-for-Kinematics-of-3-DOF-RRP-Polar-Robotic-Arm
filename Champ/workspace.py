@@ -771,36 +771,20 @@ if __name__ == "__main__":
         [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (0, 180),  # theta1 limits
-        (0, 180),    # theta2 limits
+        (-180, 180),  # theta1 limits
+        (-180, 180),    # theta2 limits
         (3, 5)       # d3 limits
     ]
     
     # Create an instance
     toolbox = RRPToolbox(link_params, joint_limits)
-    
-    # Example: Forward Kinematics (use valid joint parameters within limits)
-    # joint_parameters = [10, 0, 2.5]  # theta1=45°, theta2=0°, d3=2.5
-    # position = toolbox.Forward_Kinematics(joint_parameters)
-    # print("End Effector Position:", position)
-    
-    # Example: Inverse Kinematics (use position from forward kinematics to ensure it's valid)
-    # try:
-    #     joint_angles = toolbox.Inverse_Kinematics(position)
-    #     print("Joint Parameters:", joint_angles)
-    # except ValueError as e:
-    #     print("Inverse Kinematics Error:", e)
-    
-    # Example: Get Jacobian Matrix
-    J, reduced_J = toolbox.get_RRP_Jacobian_Matrix([10, 0, 2.5])
-    print("Reduced Jacobian Matrix:", reduced_J)
-    
+
     # Example: Get workspace points
-    print("\nGenerating workspace...")
-    workspace = toolbox.get_workspace(theta1_samples=10, theta2_samples=10, d3_samples=5)
-    print(f"Workspace contains {len(workspace)} reachable points")
+    # print("\nGenerating workspace...")
+    # workspace = toolbox.get_workspace(theta1_samples=10, theta2_samples=10, d3_samples=5)
+    # print(f"Workspace contains {len(workspace)} reachable points")
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(5,10,5)
+    toolbox.plot_workspace_3d(10,10,5)
 
