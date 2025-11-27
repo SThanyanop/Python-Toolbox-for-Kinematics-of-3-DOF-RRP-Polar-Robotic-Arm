@@ -550,7 +550,7 @@ class RRPToolbox:
         
         return singularity_positions, singularity_configs
     
-    def plot_workspace_3d(self, theta1_samples=25, theta2_samples=25, d3_samples=15):
+    def plot_workspace_3d(self, theta1_samples=10, theta2_samples=10, d3_samples=5):
         """
         Plot the robot workspace in 3D using matplotlib with convex hull.
         Shows the edge/boundary, robot links, joints, end effector, and singularities.
@@ -932,9 +932,9 @@ if __name__ == "__main__":
         [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (0, 90),  # theta1 limits
+        (0, 10),  # theta1 limits
         (0, 180),    # theta2 limits
-        (0, 5)       # d3 limits
+        (3, 5)       # d3 limits
     ]
     
     # Create an instance
@@ -947,4 +947,4 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(10,10,5)
+    toolbox.plot_workspace_3d()
