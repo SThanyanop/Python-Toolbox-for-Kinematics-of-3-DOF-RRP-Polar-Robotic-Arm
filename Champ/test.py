@@ -240,12 +240,13 @@ class RRPToolbox:
     def get_workspace(self, theta1_samples=12, theta2_samples=12, d3_samples=6):
         """
         Generate workspace points by sampling joint parameters within their limits.
-        Only sample d3 at its boundaries (d3_min and d3_max) to show only outer surface.
+        At boundary angles (theta1_min/max or theta2_min/max): sample all d3 values.
+        At interior angles: sample only d3_min and d3_max.
         
         Args:
             theta1_samples: Number of samples for theta1
             theta2_samples: Number of samples for theta2
-            d3_samples: Not used - always samples only d3_min and d3_max
+            d3_samples: Number of samples for d3
             
         Returns:
             workspace_points: List of (x, y, z) positions reachable by the robot
@@ -259,12 +260,25 @@ class RRPToolbox:
         # Generate samples
         theta1_range = [theta1_min + (theta1_max - theta1_min) * i / (theta1_samples - 1) for i in range(theta1_samples)]
         theta2_range = [theta2_min + (theta2_max - theta2_min) * i / (theta2_samples - 1) for i in range(theta2_samples)]
-        d3_range = [d3_min, d3_max]  # Only sample boundary values
+        d3_range = [d3_min + (d3_max - d3_min) * i / (d3_samples - 1) for i in range(d3_samples)]
         
-        # For each theta1, sample ALL theta2 with only d3_min and d3_max
+        # Get link parameters from link_params
+        # link_params structure: [[(x1a, y1a, z1a), (x1b, y1b, z1b)], [(x2a, y2a, z2a)], [(x3a, y3a, z3a)]]
         for theta1 in theta1_range:
             for theta2 in theta2_range:
-                for d3 in d3_range:
+                # Check if at boundary angles
+                is_theta1_boundary = (abs(theta1 - theta1_min) < 1e-6 or abs(theta1 - theta1_max) < 1e-6)
+                is_theta2_boundary = (abs(theta2 - theta2_min) < 1e-6 or abs(theta2 - theta2_max) < 1e-6)
+                
+                # Select d3 samples based on boundary condition
+                if is_theta1_boundary or is_theta2_boundary:
+                    # At boundary: use all d3 samples
+                    d3_to_sample = d3_range
+                else:
+                    # At interior: use only d3_min and d3_max
+                    d3_to_sample = [d3_min, d3_max]
+                
+                for d3 in d3_to_sample:
                     # Convert to radians
                     th1_rad = self.deg_to_rad(theta1)
                     th2_rad = self.deg_to_rad(theta2)
@@ -433,14 +447,13 @@ class RRPToolbox:
         # Convert to numpy array
         points = np.array(all_points)
         
-        # Compute convex hull (or skip if degenerate)
-        hull = None
+        # Compute convex hull
         try:
             hull = ConvexHull(points)
+            # hull = points
         except Exception as e:
-            print(f"Could not compute 3D convex hull: {e}")
-            print(f"Points shape: {points.shape} - this may be a 2D cross-section")
-            # For 2D cases, we'll still plot but without convex hull faces
+            print(f"Could not compute convex hull: {e}")
+            return
         
         # Create 3D plot
         fig = plt.figure(figsize=(16, 11))
@@ -483,121 +496,38 @@ class RRPToolbox:
         slider_azim.on_changed(update_view)
         btn_toggle.on_clicked(toggle_vertices)
         
-        # Set initial camera view to elevation=0, azimuth=0
-        slider_elev.set_val(0)
-        slider_azim.set_val(0)
-        
         # Plot the convex hull surface with transparent face colors (hollow - no top/bottom caps)
         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         
-        if hull is not None:
-            # Identify extreme Z values to filter out top/bottom faces
-            z_values = points[:, 2]
-            z_min = np.min(z_values)
-            z_max = np.max(z_values)
-            z_range = z_max - z_min
-            z_threshold = z_range * 0.02 if z_range > 0 else 0  # 2% from top or bottom to minimize hiding edges
+        # Identify extreme Z values to filter out top/bottom faces
+        z_values = points[:, 2]
+        z_min = np.min(z_values)
+        z_max = np.max(z_values)
+        z_range = z_max - z_min
+        z_threshold = z_range * 0.02  # 2% from top or bottom to minimize hiding edges
+        
+        for simplex in hull.simplices:
+            # Get the three vertices of each triangle
+            triangle = points[simplex]
             
-            for simplex in hull.simplices:
-                # Get the three vertices of each triangle
-                triangle = points[simplex]
-                
-                # Check if triangle is at top or bottom
-                triangle_z_values = triangle[:, 2]
-                is_top = np.all(triangle_z_values > (z_max - z_threshold))
-                is_bottom = np.all(triangle_z_values < (z_min + z_threshold))
-                
-                # Skip top and bottom faces completely
-                if is_top or is_bottom:
-                    continue
-                
-                # Plot triangle faces with transparency (light blue fill)
-                verts = [triangle]
-                face = Poly3DCollection(verts, alpha=0.15, facecolor='cyan', edgecolor='blue', linewidth=0.5)
-                ax.add_collection3d(face)
-                
-                # Plot the triangle edges
-                ax.plot3D(*triangle[[0, 1], :].T, 'b-', linewidth=1, alpha=0.6)
-                ax.plot3D(*triangle[[1, 2], :].T, 'b-', linewidth=1, alpha=0.6)
-                ax.plot3D(*triangle[[2, 0], :].T, 'b-', linewidth=1, alpha=0.6)
-        
-        # Convert workspace points to array first
-        ws_array = np.array(workspace_points)
-        
-        # Connect workspace grid points with edges
-        # Group points by (theta1, theta2) and connect d3 values
-        theta1_min, theta1_max = self.joint_limits[0]
-        theta2_min, theta2_max = self.joint_limits[1]
-        d3_min, d3_max = self.joint_limits[2]
-        
-        theta1_range = [theta1_min + (theta1_max - theta1_min) * i / (theta1_samples - 1) for i in range(theta1_samples)]
-        theta2_range = [theta2_min + (theta2_max - theta2_min) * i / (theta2_samples - 1) for i in range(theta2_samples)]
-        
-        # Build a dictionary to map (theta1_idx, theta2_idx, d3_idx) to point index
-        point_idx = 0
-        point_map = {}
-        for i in range(theta1_samples):
-            for j in range(len(theta2_range)):
-                for d3_idx in range(2):  # 0 for d3_min, 1 for d3_max
-                    point_map[(i, j, d3_idx)] = point_idx
-                    point_idx += 1
-        
-        # Connect edges along d3 direction (within same theta1, theta2)
-        # Only connect d3_min to d3_max at theta1 boundaries (theta1_min and theta1_max)
-        for i in range(theta1_samples):
-            # Check if this is a boundary theta1
-            is_theta1_boundary = (i == 0 or i == theta1_samples - 1)
+            # Check if triangle is at top or bottom
+            triangle_z_values = triangle[:, 2]
+            is_top = np.all(triangle_z_values > (z_max - z_threshold))
+            is_bottom = np.all(triangle_z_values < (z_min + z_threshold))
             
-            for j in range(len(theta2_range)):
-                idx_min = point_map.get((i, j, 0))
-                idx_max = point_map.get((i, j, 1))
-                
-                if idx_min is not None and idx_max is not None and idx_min < len(ws_array) and idx_max < len(ws_array):
-                    # Only draw d3 connection if at theta1 boundary
-                    if is_theta1_boundary:
-                        p_min = ws_array[idx_min]
-                        p_max = ws_array[idx_max]
-                        ax.plot3D([p_min[0], p_max[0]], [p_min[1], p_max[1]], [p_min[2], p_max[2]], 
-                                 'b-', linewidth=1, alpha=0.5)
-        
-        # Connect edges along theta2 direction (within same theta1, d3)
-        # Only plot at boundaries to avoid cluttering interior
-        for i in range(theta1_samples):
-            is_theta1_boundary = (i == 0 or i == theta1_samples - 1)
-            if not is_theta1_boundary:
+            # Skip top and bottom faces completely
+            if is_top or is_bottom:
                 continue
-                
-            for d3_idx in range(2):
-                for j in range(len(theta2_range) - 1):
-                    idx_curr = point_map.get((i, j, d3_idx))
-                    idx_next = point_map.get((i, j + 1, d3_idx))
-                    
-                    if idx_curr is not None and idx_next is not None and idx_curr < len(ws_array) and idx_next < len(ws_array):
-                        p_curr = ws_array[idx_curr]
-                        p_next = ws_array[idx_next]
-                        ax.plot3D([p_curr[0], p_next[0]], [p_curr[1], p_next[1]], [p_curr[2], p_next[2]], 
-                                 'b-', linewidth=1, alpha=0.5)
-        
-        # Connect edges along theta1 direction (within same theta2, d3)
-        # Only plot at boundaries to avoid cluttering interior
-        for j in range(len(theta2_range)):
-            is_theta2_boundary = (j == 0 or j == len(theta2_range) - 1)
-            if not is_theta2_boundary:
-                continue
-                
-            for d3_idx in range(2):
-                for i in range(theta1_samples - 1):
-                    idx_curr = point_map.get((i, j, d3_idx))
-                    idx_next = point_map.get((i + 1, j, d3_idx))
-                    
-                    if idx_curr is not None and idx_next is not None and idx_curr < len(ws_array) and idx_next < len(ws_array):
-                        p_curr = ws_array[idx_curr]
-                        p_next = ws_array[idx_next]
-                        ax.plot3D([p_curr[0], p_next[0]], [p_curr[1], p_next[1]], [p_curr[2], p_next[2]], 
-                                 'b-', linewidth=1, alpha=0.5)
-        
-        # Create edges between d3_min and d3_max at q2 boundary angles (q2_min and q2_max)
-        # (Removed - causing artifacts in visualization)
+            
+            # Plot triangle faces with transparency (light blue fill)
+            verts = [triangle]
+            face = Poly3DCollection(verts, alpha=0.15, facecolor='cyan', edgecolor='blue', linewidth=0.5)
+            ax.add_collection3d(face)
+            
+            # Plot the triangle edges
+            ax.plot3D(*triangle[[0, 1], :].T, 'b-', linewidth=1, alpha=0.6)
+            ax.plot3D(*triangle[[1, 2], :].T, 'b-', linewidth=1, alpha=0.6)
+            ax.plot3D(*triangle[[2, 0], :].T, 'b-', linewidth=1, alpha=0.6)
         
         # Connect edges with same XY coordinates (vertical lines)
         # hull_points = points[hull.vertices]
@@ -614,13 +544,13 @@ class RRPToolbox:
         #                 ax.plot3D([pt1[0], pt2[0]], [pt1[1], pt2[1]], [pt1[2], pt2[2]], 
         #                          'g-', linewidth=2, alpha=0.7)
         
-        # Plot all workspace points - these are the actual grid vertices
-        z_values_ws = ws_array[:, 2]  # Get Z coordinates of workspace points
-        vertex_scatter = ax.scatter(ws_array[:, 0], 
-                            ws_array[:, 1], 
-                            ws_array[:, 2],
-                            c=z_values_ws, cmap='viridis', marker='o', s=40, alpha=0.8, 
-                            label='Workspace Grid Vertices', edgecolors='black', linewidth=0.5)
+        # Plot all workspace points colored by Z height (not just hull vertices)
+        z_values_all = points[:, 2]  # Get Z coordinates of ALL points
+        vertex_scatter = ax.scatter(points[:, 0], 
+                            points[:, 1], 
+                            points[:, 2],
+                            c=z_values_all, cmap='viridis', marker='o', s=30, alpha=0.6, 
+                            label='Workspace Points (colored by Z height)', edgecolors='black', linewidth=0.3)
         
         # Add colorbar to show Z-axis scale
         cbar = plt.colorbar(vertex_scatter, ax=ax, pad=0.1, shrink=0.8)
@@ -682,23 +612,6 @@ class RRPToolbox:
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
         
-        # Set equal axis lengths to fit from base (0,0,0) to farthest end effector
-        x_max = max(abs(points[:, 0].min()), abs(points[:, 0].max()))
-        y_max = max(abs(points[:, 1].min()), abs(points[:, 1].max()))
-        z_max = max(abs(points[:, 2].min()), abs(points[:, 2].max()))
-        
-        # Use the maximum distance from origin
-        max_distance = max(x_max, y_max, z_max)
-        
-        # Add small margin
-        margin = max_distance * 0.1
-        axis_limit = max_distance + margin
-        
-        # Center on origin (base position at 0,0,0)
-        ax.set_xlim(-axis_limit, axis_limit)
-        ax.set_ylim(-axis_limit, axis_limit)
-        ax.set_zlim(-axis_limit, axis_limit)
-        
         # Create title with joint limits information
         q1_min, q1_max = self.joint_limits[0]
         q2_min, q2_max = self.joint_limits[1]
@@ -727,9 +640,9 @@ if __name__ == "__main__":
         [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (0, 180),  # theta1 limits
+        (-180, 180),  # theta1 limits
         (0, 180),    # theta2 limits
-        (3, 5)       # d3 limits
+        (0, 2)       # d3 limits
     ]
     
     # Create an instance
@@ -758,5 +671,5 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(10,10,5)
+    toolbox.plot_workspace_3d(12,8,5)
 
