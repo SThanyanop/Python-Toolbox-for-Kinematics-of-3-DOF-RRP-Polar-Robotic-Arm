@@ -192,51 +192,48 @@ class RRPToolbox:
     
     def Inverse_Kinematics(self, target_position):
         x, y, z = target_position
-        x1 = self.joint_global_positions[1][0]  # Link 1 x
-        y1 = self.joint_global_positions[1][1]  # Link 1 y
-        z1 = self.joint_global_positions[1][2]  # Link 1 z
         
-        x2 = self.joint_global_positions[2][0]  # Link 2 x
-        y2 = self.joint_global_positions[2][1]  # Link 2 y
-        z2 = self.joint_global_positions[2][2]  # Link 2 z
+        x1, y1, z1 = self.joint_global_positions[1]
+        x2, y2, z2 = self.joint_global_positions[2]
+        x3, y3, z3 = self.joint_global_positions[3]
         
-        x3 = self.joint_global_positions[3][0]  # End Effector x
-        y3 = self.joint_global_positions[3][1]  # End Effector y
-        z3 = self.joint_global_positions[3][2]  # End Effector z
+        thera1_offset = math.atan2(y3, x3)
+        theta1 = math.atan2(y, x) - thera1_offset
+        
+        x_org = x*math.cos(-theta1) - y*math.sin(-theta1)
+        y_org = x*math.sin(-theta1) + y*math.cos(-theta1)
+        
+        x_org -= x1
+        y_org -= y1
+        z_org = z - z1
+        
+        r_target = math.sqrt(x_org**2  + y_org**2  + z_org**2)
+        
+        dx = x3 - x1
+        dy = y3 - y1
+        dz = z3 - z1
         
         
-        offest_theta1 = math.atan2(y3, x3)
-        theta1 = math.atan2(y, x) - offest_theta1
+        d_minus = -dx - math.sqrt(r_target**2 - dy**2 - dz**2)
+        d_plus = -dx + math.sqrt(r_target**2 - dy**2 - dz**2)
         
-        offset_theta2 = math.atan2(z3-z1, math.sqrt((x3-x1)**2 + (y3-y1)**2))
-        theta2 = math.atan2(z - z1, math.sqrt((x - x1)**2 + (y - y1)**2)) - offset_theta2
+        r_ref = math.sqrt(dx**2 + dy**2 + dz**2)
         
-        
-        z1 = self.joint_local_positions[1][2]  # Link 1 z
-        z2 = self.joint_local_positions[2][2]  # Link 2 z
-        z3 = self.joint_local_positions[3][2]  # End Effector z
-        x2 = self.joint_local_positions[2][0]  # Link 2
-        x3 = self.joint_local_positions[3][0]  # End Effector
-        
-        if math.sin(theta2) == 0:
-            x3 = self.joint_global_positions[3][0]  # End Effector x
-            y3 = self.joint_global_positions[3][1]  # End Effector y
-            d3 = math.sqrt((x - x3)**2 + (y - y3)**2)
+        d3 = 0
+        if r_target > r_ref:
+            d3 = d_plus
         else:
-            d3 = ((z - z1 - math.cos(theta2)*z2 - math.cos(theta2)*z3 - math.sin(theta2)*x2) / math.sin(theta2)) - x3
+            d3 = d_minus
+            
+        dx += d3
+        
+        theta2_offset = math.atan2(dz, math.sqrt(dx**2 + dy**2))
+        theta2 = math.atan2(z_org, math.sqrt(x_org**2 + y_org**2)) - theta2_offset
         
         theta1 = self.rad_to_deg(theta1)
         theta2 = self.rad_to_deg(theta2)
-    
-        
-        if not (self.joint_limits[0][0] <= theta1 <= self.joint_limits[0][1]):
-            raise ValueError(f"Calculated theta1 {theta1} is out of limits: {self.joint_limits[0]}")
-        if not (self.joint_limits[1][0] <= theta2 <= self.joint_limits[1][1]):
-            raise ValueError(f"Calculated theta2 {theta2} is out of limits: {self.joint_limits[1]}")
-        if not (self.joint_limits[2][0] <= d3 <= self.joint_limits[2][1]):
-            raise ValueError(f"Calculated d3 {d3} is out of limits: {self.joint_limits[2]}")
-        
-        return (theta1, theta2, d3)
+
+        return (theta1,theta2,d3)
         
     def Differential_Forward_Kinematics(self, joint_velocity_parameters):
         J, reduced_J, inv_reduced_J = self.get_RRP_Jacobian_Matrix(joint_velocity_parameters)
