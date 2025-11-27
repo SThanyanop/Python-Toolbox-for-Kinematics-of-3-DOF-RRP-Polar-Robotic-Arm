@@ -683,44 +683,87 @@ class RRPToolbox:
         # Plot robot configuration at a specific joint angle
         # joint_params = [(self.joint_limits[0][0]+self.joint_limits[0][1])/2, (self.joint_limits[1][0]+self.joint_limits[1][1])/2, (self.joint_limits[2][0]+self.joint_limits[2][1])/2]  # Sample configuration
         # joint_params = [self.joint_limits[0][0], self.joint_limits[1][0], self.joint_limits[2][0]]  # Min configuration
-        joint_params = [0,30,0.3]
+        joint_params = [self.joint_limits[0][0], self.joint_limits[1][0], self.joint_limits[2][1]]
         
-        # Get all joint positions for this configuration
-        result_matrix = self.get_RRP_Tramsform_Matrix(joint_params)
+        # Compute forward kinematics to get all link positions
+        theta1 = joint_params[0]
+        theta2 = joint_params[1]
+        d3 = joint_params[2]
         
-        # Create line from origin through all joint positions
-        joint_positions = [
-            (0, 0, 0),  # Base (origin)
-            self.joint_global_positions[1],  # Joint 1
-            self.joint_global_positions[2],  # Joint 2
-            (result_matrix[0][3], result_matrix[1][3], result_matrix[2][3])  # End Effector
-        ]
+        # Convert to radians
+        th1 = np.radians(theta1)
+        th2 = np.radians(theta2)
         
-        # Plot robot links (as lines connecting joints)
-        for i in range(len(joint_positions) - 1):
-            j1 = joint_positions[i]
-            j2 = joint_positions[i + 1]
-            ax.plot3D([j1[0], j2[0]], [j1[1], j2[1]], [j1[2], j2[2]], 
-                     'r-', linewidth=3, label='Robot Link' if i == 0 else '')
+        # Build robot arm path by tracing through link segments
+        robot_positions = [np.array([0, 0, 0])]  # Start at base
+        current_pos = np.array([0, 0, 0])
         
-        # Plot joint positions
-        for i, pos in enumerate(joint_positions[:-1]):
-            if i == 0:
-                ax.scatter(*pos, c='green', marker='s', s=150, label='Base/Origin')
-            else:
-                ax.scatter(*pos, c='orange', marker='o', s=100, label='Joint' if i == 1 else '')
+        # Helper function for rotation around z-axis
+        def Rz(angle):
+            c, s = np.cos(angle), np.sin(angle)
+            return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
         
-        # Plot end effector
-        end_effector_pos = joint_positions[-1]
-        ax.scatter(*end_effector_pos, c='red', marker='^', s=200, 
-                  label='End Effector', edgecolors='darkred', linewidth=2)
+        # Link 1: Process each segment
+        for segment in self.link_params[0]:
+            segment_vec = np.array(segment)
+            rotated_segment = Rz(th1) @ segment_vec
+            current_pos = current_pos + rotated_segment
+            robot_positions.append(current_pos.copy())
         
-        # Add text labels
-        ax.text(0, 0, 0, 'Base', fontsize=10, color='green')
-        for i, pos in enumerate(joint_positions[1:-1], 1):
-            ax.text(pos[0], pos[1], pos[2], f'Joint {i}', fontsize=9, color='orange')
-        ax.text(end_effector_pos[0], end_effector_pos[1], end_effector_pos[2], 
-               'EE', fontsize=10, color='red', weight='bold')
+        link1_end_idx = len(robot_positions) - 1
+        
+        # Link 2: Process each segment
+        for segment in self.link_params[1]:
+            segment_vec = np.array(segment)
+            rotated_segment = Rz(th1) @ segment_vec
+            current_pos = current_pos + rotated_segment
+            robot_positions.append(current_pos.copy())
+        
+        link2_end_idx = len(robot_positions) - 1
+        
+        # Prismatic joint (d3): Extend in direction controlled by theta2
+        direction = np.array([
+            np.sin(th2) * np.cos(th1),
+            np.sin(th2) * np.sin(th1),
+            np.cos(th2)
+        ])
+        current_pos = current_pos + d3 * direction
+        robot_positions.append(current_pos.copy())
+        
+        d3_end_idx = len(robot_positions) - 1
+        
+        # End effector: Process each segment
+        for segment in self.link_params[2]:
+            segment_length = np.linalg.norm(np.array(segment))
+            current_pos = current_pos + segment_length * direction
+            robot_positions.append(current_pos.copy())
+        
+        robot_array = np.array(robot_positions)
+        
+        # Plot Link 1
+        link1_positions = robot_array[:link1_end_idx + 1]
+        ax.plot3D(link1_positions[:, 0], link1_positions[:, 1], link1_positions[:, 2], 
+                 'o-', linewidth=3, markersize=8, color='steelblue', label='Link 1')
+        
+        # Plot Link 2
+        link2_positions = robot_array[link1_end_idx:link2_end_idx + 1]
+        ax.plot3D(link2_positions[:, 0], link2_positions[:, 1], link2_positions[:, 2], 
+                 'o-', linewidth=3, markersize=8, color='coral', label='Link 2')
+        
+        # Plot Prismatic Joint (d3)
+        d3_positions = robot_array[link2_end_idx:d3_end_idx + 1]
+        ax.plot3D(d3_positions[:, 0], d3_positions[:, 1], d3_positions[:, 2], 
+                 'o-', linewidth=4, markersize=8, color='green', label='Prismatic (d3)')
+        
+        # Plot End Effector
+        if len(self.link_params[2]) > 0:
+            ee_positions = robot_array[d3_end_idx:]
+            ax.plot3D(ee_positions[:, 0], ee_positions[:, 1], ee_positions[:, 2], 
+                     's-', linewidth=2, markersize=10, color='red', label='End Effector')
+        
+        # Plot base joint
+        ax.scatter(robot_array[0, 0], robot_array[0, 1], robot_array[0, 2], 
+                  c='green', s=150, marker='s', label='Base', zorder=5)
         
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -771,8 +814,8 @@ if __name__ == "__main__":
         [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (-180, 180),  # theta1 limits
-        (-180, 180),    # theta2 limits
+        (0, 90),  # theta1 limits
+        (0, 180),    # theta2 limits
         (3, 5)       # d3 limits
     ]
     
