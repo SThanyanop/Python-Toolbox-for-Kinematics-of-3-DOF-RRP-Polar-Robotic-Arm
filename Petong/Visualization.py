@@ -218,6 +218,54 @@ class RRPRobot:
         ax.quiver(*origin, *y_axis, color='g', arrow_length_ratio=0.2, linewidth=1.5)
         ax.quiver(*origin, *z_axis, color='b', arrow_length_ratio=0.2, linewidth=1.5)
     
+    def interpolate_trajectory(self, waypoints, total_time, fps=30):
+        """
+        Generate smooth trajectory with time-based interpolation.
+        
+        Args:
+            waypoints: List of (theta1, theta2, d3) tuples or [x, y, z] positions
+            total_time: Total time (in seconds) to complete the entire trajectory
+            fps: Frames per second for animation (default: 30)
+        
+        Returns:
+            List of interpolated joint configurations and corresponding times
+        """
+        # Generate evenly spaced time stamps for each waypoint
+        num_waypoints = len(waypoints)
+        times = np.linspace(0, total_time, num_waypoints)
+        
+        trajectory = []
+        time_stamps = []
+        
+        for i in range(len(waypoints) - 1):
+            start = waypoints[i]
+            end = waypoints[i + 1]
+            t_start = times[i]
+            t_end = times[i + 1]
+            duration = t_end - t_start
+            
+            if duration <= 0:
+                continue
+            
+            # Calculate number of frames for this segment
+            num_frames = int(duration * fps)
+            
+            # Linear interpolation between waypoints
+            for j in range(num_frames):
+                alpha = j / num_frames
+                interpolated = tuple(
+                    start[k] + alpha * (end[k] - start[k]) 
+                    for k in range(len(start))
+                )
+                trajectory.append(interpolated)
+                time_stamps.append(t_start + alpha * duration)
+        
+        # Add final waypoint
+        trajectory.append(waypoints[-1])
+        time_stamps.append(times[-1])
+        
+        return trajectory, time_stamps
+    
     def interactive_plot(self):
         """Create interactive plot with sliders for joint control."""
         fig = plt.figure(figsize=(12, 8))
@@ -255,36 +303,42 @@ class RRPRobot:
         self.plot_robot(theta1_init, theta2_init, d3_init, ax=ax)
         plt.show()
     
-    def animate_trajectory(self, trajectory, interval=50, trajectory_type='joint'):
+    def animate_trajectory(self, trajectory, total_time=None, trajectory_type='joint', fps=30):
         """
-        Animate robot following a trajectory.
-        """
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
+        Animate robot following a trajectory with time-based control.
         
-        # Convert position trajectory to joint trajectory if needed
+        Args:
+            trajectory: List of waypoints (joint configs or positions)
+            total_time: Total time (in seconds) to complete the trajectory. If None, uses default based on number of waypoints
+            trajectory_type: 'joint' or 'position'
+            fps: Frames per second for animation
+        """
+        # Generate default time if not provided
+        if total_time is None:
+            total_time = len(trajectory)  # 1 second per waypoint by default
+        
+        # Interpolate trajectory
         if trajectory_type == 'position':
-            joint_trajectory = []
+            # Convert positions to joint configs first
+            joint_waypoints = []
             for pos in trajectory:
                 x, y, z = pos
                 joint_config = self.inverse_kinematics(x, y, z)
-                joint_trajectory.append(joint_config)
+                joint_waypoints.append(joint_config)
             
-            # Calculate actual end effector positions from forward kinematics
-            actual_ee_path = []
-            for joint_config in joint_trajectory:
-                positions = self.forward_kinematics(*joint_config)
-                actual_ee_path.append(positions[-1])  # Last position is end effector
-            
-            path_points = np.array(actual_ee_path)
+            joint_trajectory, time_stamps = self.interpolate_trajectory(joint_waypoints, total_time, fps)
         else:
-            joint_trajectory = trajectory
-            # Calculate end effector path for joint trajectory
-            actual_ee_path = []
-            for joint_config in joint_trajectory:
-                positions = self.forward_kinematics(*joint_config)
-                actual_ee_path.append(positions[-1])
-            path_points = np.array(actual_ee_path)
+            joint_trajectory, time_stamps = self.interpolate_trajectory(trajectory, total_time, fps)
+        
+        # Calculate actual end effector positions
+        actual_ee_path = []
+        for joint_config in joint_trajectory:
+            positions = self.forward_kinematics(*joint_config)
+            actual_ee_path.append(positions[-1])
+        path_points = np.array(actual_ee_path)
+        
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
         
         def update_frame(frame):
             ax.cla()
@@ -293,23 +347,24 @@ class RRPRobot:
             
             # Get all robot positions
             positions = self.forward_kinematics(theta1, theta2, d3)
-            
-            # The end effector position is the last position
             ee_pos = positions[-1]
             
             # Plot the actual end effector path
             ax.plot(path_points[:frame+1, 0], path_points[:frame+1, 1], 
                    path_points[:frame+1, 2], 'r--', linewidth=2, 
                    alpha=0.5, label='End Effector Path')
-            # Plot the star at the current end effector position
             ax.scatter(path_points[frame, 0], path_points[frame, 1], 
-                      path_points[frame, 2])
+                      path_points[frame, 2], s=100, c='yellow', marker='*')
             
-            ax.set_title(f'Frame {frame+1}/{len(joint_trajectory)}\n' + 
+            current_time = time_stamps[frame]
+            total_time_display = time_stamps[-1]
+            
+            ax.set_title(f'Time: {current_time:.2f}s / {total_time_display:.2f}s\n' + 
                         f'θ1={theta1:.1f}°, θ2={theta2:.1f}°, d3={d3:.2f}m\n' +
                         f'End Effector: [{ee_pos[0]:.2f}, {ee_pos[1]:.2f}, {ee_pos[2]:.2f}]')
             ax.legend(loc='upper right')
         
+        interval = 1000 / fps  # Convert fps to milliseconds per frame
         anim = FuncAnimation(fig, update_frame, frames=len(joint_trajectory), 
                            interval=interval, repeat=True)
         plt.show()
@@ -318,7 +373,7 @@ class RRPRobot:
 
 # Example usage
 if __name__ == "__main__":
-    print("RRP Robotic Arm - Fixed Inverse Kinematics")
+    print("RRP Robotic Arm - Time-Based Control")
     print("=" * 50)
 
     # Link 1
@@ -348,18 +403,22 @@ if __name__ == "__main__":
     print("   Use sliders to control joint angles and prismatic extension")
     robot.interactive_plot()
 
-    # Position-based trajectory
-    print("\nCreating position-based trajectory...")
+    # Time-based position trajectory
+    print("\n2. Creating time-based position trajectory...")
     
     position_trajectory = [
-        [2, 2, 3],
-        [1, 1, 1],
-        [-1, -1, -1],
-        [2, 2, 3],
+        [2, 2, 5],
+        [1, 1, 5],
+        [-1, -1, -3],
+        [2, 2, 5],
     ]
     
-    print("Target positions:")
+    # Define total time for entire trajectory (in seconds)
+    total_time = 5  
+    
+    print(f"Target positions (completing in {total_time}s total):")
     for i, pos in enumerate(position_trajectory):
         print(f"  Point {i+1}: {pos}")
     
-    robot.animate_trajectory(position_trajectory, interval=500, trajectory_type='position')
+    robot.animate_trajectory(position_trajectory, total_time=total_time, 
+                           trajectory_type='position', fps=30)
