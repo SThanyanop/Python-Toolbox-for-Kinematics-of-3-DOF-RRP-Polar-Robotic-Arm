@@ -462,10 +462,10 @@ class RRPToolbox:
         
         # Create toggle buttons for vertices and faces
         btn_toggle_vertices = Button(ax_toggle_vertices, 'Hide Vertices', color='lightgray', hovercolor='0.975')
-        btn_toggle_faces = Button(ax_toggle_faces, 'Show Faces', color='lightgray', hovercolor='0.975')
+        btn_toggle_faces = Button(ax_toggle_faces, 'Hide Faces', color='lightgray', hovercolor='0.975')
         
         # State for toggles
-        toggle_state = {'vertices_visible': True, 'faces_visible': False}
+        toggle_state = {'vertices_visible': True, 'faces_visible': True}
         vertex_scatter = None
         face_collections = []
         
@@ -654,7 +654,9 @@ class RRPToolbox:
         # Plot faces with transparency
         if faces:
             face_collection = Poly3DCollection(faces, alpha=0.25, facecolor='cyan', edgecolor='none')
+            face_collection.set_visible(toggle_state['faces_visible'])  # Initially hidden
             ax.add_collection3d(face_collection)
+            face_collections.append(face_collection)  # Store for toggle button
         
         # Plot all workspace points - these are the actual grid vertices
         z_values_ws = ws_array[:, 2]  # Get Z coordinates of workspace points
@@ -771,7 +773,7 @@ if __name__ == "__main__":
     joint_limits = [
         (0, 180),  # theta1 limits
         (0, 180),    # theta2 limits
-        (0, 5)       # d3 limits
+        (3, 5)       # d3 limits
     ]
     
     # Create an instance
