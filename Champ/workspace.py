@@ -451,20 +451,23 @@ class RRPToolbox:
         # Slider axes
         ax_elev = fig.add_axes([0.2, 0.05, 0.3, 0.03])
         ax_azim = fig.add_axes([0.2, 0.01, 0.3, 0.03])
-        ax_toggle = fig.add_axes([0.65, 0.05, 0.15, 0.03])
+        ax_toggle_vertices = fig.add_axes([0.65, 0.05, 0.15, 0.03])
+        ax_toggle_faces = fig.add_axes([0.65, 0.01, 0.15, 0.03])
         
         from matplotlib.widgets import Slider, Button
         
         # Create sliders
-        slider_elev = Slider(ax_elev, 'Elevation', -90, 90, valinit=20, color='orange')
-        slider_azim = Slider(ax_azim, 'Azimuth', -180, 180, valinit=45, color='cyan')
+        slider_elev = Slider(ax_elev, 'Elevation', -90, 90, valinit=0, color='orange')
+        slider_azim = Slider(ax_azim, 'Azimuth', -180, 180, valinit=0, color='cyan')
         
-        # Create toggle button for vertices
-        btn_toggle = Button(ax_toggle, 'Hide Vertices', color='lightgray', hovercolor='0.975')
+        # Create toggle buttons for vertices and faces
+        btn_toggle_vertices = Button(ax_toggle_vertices, 'Hide Vertices', color='lightgray', hovercolor='0.975')
+        btn_toggle_faces = Button(ax_toggle_faces, 'Show Faces', color='lightgray', hovercolor='0.975')
         
-        # State for toggle
-        toggle_state = {'visible': True}
+        # State for toggles
+        toggle_state = {'vertices_visible': True, 'faces_visible': False}
         vertex_scatter = None
+        face_collections = []
         
         def update_view(val):
             """Update the 3D view based on slider values"""
@@ -473,15 +476,24 @@ class RRPToolbox:
         
         def toggle_vertices(event):
             """Toggle vertex visibility"""
-            toggle_state['visible'] = not toggle_state['visible']
+            toggle_state['vertices_visible'] = not toggle_state['vertices_visible']
             if vertex_scatter is not None:
-                vertex_scatter.set_visible(toggle_state['visible'])
-            btn_toggle.label.set_text('Hide Vertices' if toggle_state['visible'] else 'Show Vertices')
+                vertex_scatter.set_visible(toggle_state['vertices_visible'])
+            btn_toggle_vertices.label.set_text('Hide Vertices' if toggle_state['vertices_visible'] else 'Show Vertices')
+            fig.canvas.draw_idle()
+        
+        def toggle_faces(event):
+            """Toggle face visibility"""
+            toggle_state['faces_visible'] = not toggle_state['faces_visible']
+            for face_coll in face_collections:
+                face_coll.set_visible(toggle_state['faces_visible'])
+            btn_toggle_faces.label.set_text('Hide Faces' if toggle_state['faces_visible'] else 'Show Faces')
             fig.canvas.draw_idle()
         
         slider_elev.on_changed(update_view)
         slider_azim.on_changed(update_view)
-        btn_toggle.on_clicked(toggle_vertices)
+        btn_toggle_vertices.on_clicked(toggle_vertices)
+        btn_toggle_faces.on_clicked(toggle_faces)
         
         # Set initial camera view to elevation=0, azimuth=0
         slider_elev.set_val(0)
@@ -491,35 +503,12 @@ class RRPToolbox:
         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         
         if hull is not None:
-            # Identify extreme Z values to filter out top/bottom faces
-            z_values = points[:, 2]
-            z_min = np.min(z_values)
-            z_max = np.max(z_values)
-            z_range = z_max - z_min
-            z_threshold = z_range * 0.02 if z_range > 0 else 0  # 2% from top or bottom to minimize hiding edges
-            
-            for simplex in hull.simplices:
-                # Get the three vertices of each triangle
-                triangle = points[simplex]
-                
-                # Check if triangle is at top or bottom
-                triangle_z_values = triangle[:, 2]
-                is_top = np.all(triangle_z_values > (z_max - z_threshold))
-                is_bottom = np.all(triangle_z_values < (z_min + z_threshold))
-                
-                # Skip top and bottom faces completely
-                if is_top or is_bottom:
-                    continue
-                
-                # Plot triangle faces with transparency (light blue fill)
-                verts = [triangle]
-                face = Poly3DCollection(verts, alpha=0.15, facecolor='cyan', edgecolor='blue', linewidth=0.5)
-                ax.add_collection3d(face)
-                
-                # Plot the triangle edges
-                ax.plot3D(*triangle[[0, 1], :].T, 'b-', linewidth=1, alpha=0.6)
-                ax.plot3D(*triangle[[1, 2], :].T, 'b-', linewidth=1, alpha=0.6)
-                ax.plot3D(*triangle[[2, 0], :].T, 'b-', linewidth=1, alpha=0.6)
+            # Skip plotting convex hull faces - we'll use custom boundary faces instead
+            # (commented out to avoid overlapping with boundary face toggle)
+            pass
+        else:
+            # For 2D cases, we'll still plot but without convex hull faces
+            print("Using 2D cross-section visualization (no 3D hull)")
         
         # Convert workspace points to array first
         ws_array = np.array(workspace_points)
@@ -543,30 +532,38 @@ class RRPToolbox:
                     point_idx += 1
         
         # Connect edges along d3 direction (within same theta1, theta2)
-        # Only connect d3_min to d3_max at theta1 boundaries (theta1_min and theta1_max)
+        # Only connect d3_min to d3_max at theta2 boundaries (theta2_min and theta2_max)
         for i in range(theta1_samples):
-            # Check if this is a boundary theta1
-            is_theta1_boundary = (i == 0 or i == theta1_samples - 1)
-            
             for j in range(len(theta2_range)):
+                # Check if this is a boundary theta2
+                is_theta2_boundary = (j == 0 or j == len(theta2_range) - 1)
+                
                 idx_min = point_map.get((i, j, 0))
                 idx_max = point_map.get((i, j, 1))
                 
                 if idx_min is not None and idx_max is not None and idx_min < len(ws_array) and idx_max < len(ws_array):
-                    # Only draw d3 connection if at theta1 boundary
-                    if is_theta1_boundary:
+                    # Only draw d3 connection if at theta2 boundary
+                    if is_theta2_boundary:
                         p_min = ws_array[idx_min]
                         p_max = ws_array[idx_max]
                         ax.plot3D([p_min[0], p_max[0]], [p_min[1], p_max[1]], [p_min[2], p_max[2]], 
                                  'b-', linewidth=1, alpha=0.5)
         
-        # Connect edges along theta2 direction (within same theta1, d3)
-        # Only plot at boundaries to avoid cluttering interior
-        for i in range(theta1_samples):
-            is_theta1_boundary = (i == 0 or i == theta1_samples - 1)
-            if not is_theta1_boundary:
-                continue
+        # Also connect edges along d3 direction at theta1 boundaries (theta1_min and theta1_max)
+        for i in [0, theta1_samples - 1]:
+            for j in range(len(theta2_range)):
+                idx_min = point_map.get((i, j, 0))
+                idx_max = point_map.get((i, j, 1))
                 
+                if idx_min is not None and idx_max is not None and idx_min < len(ws_array) and idx_max < len(ws_array):
+                    p_min = ws_array[idx_min]
+                    p_max = ws_array[idx_max]
+                    ax.plot3D([p_min[0], p_max[0]], [p_min[1], p_max[1]], [p_min[2], p_max[2]], 
+                             'b-', linewidth=1, alpha=0.5)
+        
+        # Connect edges along theta2 direction (within same theta1, d3)
+        # Draw at all theta1 values to fully connect the structure
+        for i in range(theta1_samples):
             for d3_idx in range(2):
                 for j in range(len(theta2_range) - 1):
                     idx_curr = point_map.get((i, j, d3_idx))
@@ -579,12 +576,8 @@ class RRPToolbox:
                                  'b-', linewidth=1, alpha=0.5)
         
         # Connect edges along theta1 direction (within same theta2, d3)
-        # Only plot at boundaries to avoid cluttering interior
+        # Draw at all theta2 values to fully connect the structure
         for j in range(len(theta2_range)):
-            is_theta2_boundary = (j == 0 or j == len(theta2_range) - 1)
-            if not is_theta2_boundary:
-                continue
-                
             for d3_idx in range(2):
                 for i in range(theta1_samples - 1):
                     idx_curr = point_map.get((i, j, d3_idx))
@@ -596,23 +589,72 @@ class RRPToolbox:
                         ax.plot3D([p_curr[0], p_next[0]], [p_curr[1], p_next[1]], [p_curr[2], p_next[2]], 
                                  'b-', linewidth=1, alpha=0.5)
         
-        # Create edges between d3_min and d3_max at q2 boundary angles (q2_min and q2_max)
-        # (Removed - causing artifacts in visualization)
+        # Create faces from connected edges (avoid duplicates by tracking processed faces)
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         
-        # Connect edges with same XY coordinates (vertical lines)
-        # hull_points = points[hull.vertices]
-        # xy_tolerance = 0.1  # tolerance for matching XY coordinates
-        # 
-        # # Find pairs of vertices with same XY but different Z
-        # for i, pt1 in enumerate(hull_points):
-        #     for j, pt2 in enumerate(hull_points):
-        #         if i < j:
-        #             # Check if XY coordinates are close
-        #             xy_dist = np.sqrt((pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2)
-        #             if xy_dist < xy_tolerance:
-        #                 # Draw vertical line connecting these points
-        #                 ax.plot3D([pt1[0], pt2[0]], [pt1[1], pt2[1]], [pt1[2], pt2[2]], 
-        #                          'g-', linewidth=2, alpha=0.7)
+        faces = []
+        face_set = set()  # Track processed faces to avoid duplicates
+        
+        # Create faces in theta2 direction (rectangular faces in theta1-theta2 plane)
+        for i in range(theta1_samples - 1):
+            for d3_idx in range(2):
+                for j in range(len(theta2_range) - 1):
+                    idx1 = point_map.get((i, j, d3_idx))
+                    idx2 = point_map.get((i + 1, j, d3_idx))
+                    idx3 = point_map.get((i + 1, j + 1, d3_idx))
+                    idx4 = point_map.get((i, j + 1, d3_idx))
+                    
+                    if all(idx is not None and idx < len(ws_array) for idx in [idx1, idx2, idx3, idx4]):
+                        # Create face as sorted tuple to avoid duplicates
+                        face_key = tuple(sorted([idx1, idx2, idx3, idx4]))
+                        if face_key not in face_set:
+                            face_set.add(face_key)
+                            p1 = ws_array[idx1]
+                            p2 = ws_array[idx2]
+                            p3 = ws_array[idx3]
+                            p4 = ws_array[idx4]
+                            faces.append([p1, p2, p3, p4])
+        
+        # Create faces in theta1 direction at theta2 boundaries (rectangular faces)
+        for j in [0, len(theta2_range) - 1]:
+            for i in range(theta1_samples - 1):
+                idx1 = point_map.get((i, j, 0))
+                idx2 = point_map.get((i + 1, j, 0))
+                idx3 = point_map.get((i + 1, j, 1))
+                idx4 = point_map.get((i, j, 1))
+                
+                if all(idx is not None and idx < len(ws_array) for idx in [idx1, idx2, idx3, idx4]):
+                    face_key = tuple(sorted([idx1, idx2, idx3, idx4]))
+                    if face_key not in face_set:
+                        face_set.add(face_key)
+                        p1 = ws_array[idx1]
+                        p2 = ws_array[idx2]
+                        p3 = ws_array[idx3]
+                        p4 = ws_array[idx4]
+                        faces.append([p1, p2, p3, p4])
+        
+        # Create faces in d3 direction at theta1 boundaries (rectangular faces)
+        for i in [0, theta1_samples - 1]:
+            for j in range(len(theta2_range) - 1):
+                idx1 = point_map.get((i, j, 0))
+                idx2 = point_map.get((i, j + 1, 0))
+                idx3 = point_map.get((i, j + 1, 1))
+                idx4 = point_map.get((i, j, 1))
+                
+                if all(idx is not None and idx < len(ws_array) for idx in [idx1, idx2, idx3, idx4]):
+                    face_key = tuple(sorted([idx1, idx2, idx3, idx4]))
+                    if face_key not in face_set:
+                        face_set.add(face_key)
+                        p1 = ws_array[idx1]
+                        p2 = ws_array[idx2]
+                        p3 = ws_array[idx3]
+                        p4 = ws_array[idx4]
+                        faces.append([p1, p2, p3, p4])
+        
+        # Plot faces with transparency
+        if faces:
+            face_collection = Poly3DCollection(faces, alpha=0.25, facecolor='cyan', edgecolor='none')
+            ax.add_collection3d(face_collection)
         
         # Plot all workspace points - these are the actual grid vertices
         z_values_ws = ws_array[:, 2]  # Get Z coordinates of workspace points
@@ -729,7 +771,7 @@ if __name__ == "__main__":
     joint_limits = [
         (0, 180),  # theta1 limits
         (0, 180),    # theta2 limits
-        (3, 5)       # d3 limits
+        (0, 5)       # d3 limits
     ]
     
     # Create an instance
@@ -758,5 +800,5 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(10,10,5)
+    toolbox.plot_workspace_3d(5,10,5)
 
