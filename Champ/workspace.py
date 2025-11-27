@@ -240,6 +240,8 @@ class RRPToolbox:
     def get_workspace(self, theta1_samples=12, theta2_samples=12, d3_samples=6):
         """
         Generate workspace points by sampling joint parameters within their limits.
+        At boundary angles (theta1_min/max or theta2_min/max): sample all d3 values.
+        At interior angles: sample only d3_min and d3_max.
         
         Args:
             theta1_samples: Number of samples for theta1
@@ -264,7 +266,22 @@ class RRPToolbox:
         # link_params structure: [[(x1a, y1a, z1a), (x1b, y1b, z1b)], [(x2a, y2a, z2a)], [(x3a, y3a, z3a)]]
         for theta1 in theta1_range:
             for theta2 in theta2_range:
-                for d3 in d3_range:
+                # Check if at boundary angles
+                is_theta1_boundary = (abs(theta1 - theta1_min) < 1e-6 or abs(theta1 - theta1_max) < 1e-6)
+                is_theta2_boundary = (abs(theta2 - theta2_min) < 1e-6 or abs(theta2 - theta2_max) < 1e-6)
+                
+                # Select d3 samples based on boundary condition
+                if is_theta1_boundary and is_theta2_boundary:
+                    # At corner: use all d3 samples
+                    d3_to_sample = d3_range
+                elif is_theta1_boundary or is_theta2_boundary:
+                    # At edge (but not corner): use only d3_min and d3_max
+                    d3_to_sample = [d3_min, d3_max]
+                else:
+                    # At interior: use only d3_min and d3_max
+                    d3_to_sample = [d3_min, d3_max]
+                
+                for d3 in d3_to_sample:
                     # Convert to radians
                     th1_rad = self.deg_to_rad(theta1)
                     th2_rad = self.deg_to_rad(theta2)
@@ -490,7 +507,7 @@ class RRPToolbox:
         z_min = np.min(z_values)
         z_max = np.max(z_values)
         z_range = z_max - z_min
-        z_threshold = z_range * 0.05  # 15% from top or bottom
+        z_threshold = z_range * 0.02  # 2% from top or bottom to minimize hiding edges
         
         for simplex in hull.simplices:
             # Get the three vertices of each triangle
@@ -501,7 +518,7 @@ class RRPToolbox:
             is_top = np.all(triangle_z_values > (z_max - z_threshold))
             is_bottom = np.all(triangle_z_values < (z_min + z_threshold))
             
-            # Skip top and bottom faces
+            # Skip top and bottom faces completely
             if is_top or is_bottom:
                 continue
             
@@ -515,28 +532,31 @@ class RRPToolbox:
             ax.plot3D(*triangle[[1, 2], :].T, 'b-', linewidth=1, alpha=0.6)
             ax.plot3D(*triangle[[2, 0], :].T, 'b-', linewidth=1, alpha=0.6)
         
+        # Create edges between d3_min and d3_max at q2 boundary angles (q2_min and q2_max)
+        # (Removed - causing artifacts in visualization)
+        
         # Connect edges with same XY coordinates (vertical lines)
-        hull_points = points[hull.vertices]
-        xy_tolerance = 0.1  # tolerance for matching XY coordinates
+        # hull_points = points[hull.vertices]
+        # xy_tolerance = 0.1  # tolerance for matching XY coordinates
+        # 
+        # # Find pairs of vertices with same XY but different Z
+        # for i, pt1 in enumerate(hull_points):
+        #     for j, pt2 in enumerate(hull_points):
+        #         if i < j:
+        #             # Check if XY coordinates are close
+        #             xy_dist = np.sqrt((pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2)
+        #             if xy_dist < xy_tolerance:
+        #                 # Draw vertical line connecting these points
+        #                 ax.plot3D([pt1[0], pt2[0]], [pt1[1], pt2[1]], [pt1[2], pt2[2]], 
+        #                          'g-', linewidth=2, alpha=0.7)
         
-        # Find pairs of vertices with same XY but different Z
-        for i, pt1 in enumerate(hull_points):
-            for j, pt2 in enumerate(hull_points):
-                if i < j:
-                    # Check if XY coordinates are close
-                    xy_dist = np.sqrt((pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2)
-                    if xy_dist < xy_tolerance:
-                        # Draw vertical line connecting these points
-                        ax.plot3D([pt1[0], pt2[0]], [pt1[1], pt2[1]], [pt1[2], pt2[2]], 
-                                 'g-', linewidth=2, alpha=0.7)
-        
-        # Plot workspace hull vertices colored by Z height
-        z_values = points[hull.vertices, 2]  # Get Z coordinates of hull vertices
-        vertex_scatter = ax.scatter(points[hull.vertices, 0], 
-                            points[hull.vertices, 1], 
-                            points[hull.vertices, 2],
-                            c=z_values, cmap='viridis', marker='o', s=50, alpha=0.8, 
-                            label='Hull Vertices (colored by Z height)', edgecolors='black', linewidth=0.5)
+        # Plot all workspace points colored by Z height (not just hull vertices)
+        z_values_all = points[:, 2]  # Get Z coordinates of ALL points
+        vertex_scatter = ax.scatter(points[:, 0], 
+                            points[:, 1], 
+                            points[:, 2],
+                            c=z_values_all, cmap='viridis', marker='o', s=30, alpha=0.6, 
+                            label='Workspace Points (colored by Z height)', edgecolors='black', linewidth=0.3)
         
         # Add colorbar to show Z-axis scale
         cbar = plt.colorbar(vertex_scatter, ax=ax, pad=0.1, shrink=0.8)
@@ -628,7 +648,7 @@ if __name__ == "__main__":
     joint_limits = [
         (-180, 180),  # theta1 limits
         (0, 180),    # theta2 limits
-        (0, 2)       # d3 limits
+        (1, 2)       # d3 limits
     ]
     
     # Create an instance
@@ -657,5 +677,5 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(12,8,5)
+    toolbox.plot_workspace_3d(12,8,3)
 
