@@ -63,17 +63,17 @@ class RRPRobot:
         theta1 = np.degrees(np.arctan2(y, x))
         th1_rad = np.radians(theta1)
         
-        # Get the position after link1 and link2
+        # Get the position at the start of link2 (end of link1)
         # Link 1 goes up by L1
-        # Link 2 extends horizontally by L2 in the direction of theta1
-        link2_end_x = self.L2 * np.cos(th1_rad)
-        link2_end_y = self.L2 * np.sin(th1_rad)
-        link2_end_z = self.L1
+        # Joint 2 is at the start of link 2
+        joint2_x = 0
+        joint2_y = 0
+        joint2_z = self.L1
         
-        # Vector from link2 end to target position
-        dx = x - link2_end_x
-        dy = y - link2_end_y
-        dz = z - link2_end_z
+        # Vector from joint2 (start of link2) to target position
+        dx = x - joint2_x
+        dy = y - joint2_y
+        dz = z - joint2_z
         
         # Distance in XY plane and total 3D distance
         r_xy = np.sqrt(dx**2 + dy**2)
@@ -85,9 +85,8 @@ class RRPRobot:
         else:
             theta2 = 0
         
-        # The total distance must equal d3 + end_effector contribution
-        # Since end effector follows the same direction as d3, we subtract its length
-        d3 = total_distance - self.ee_length
+        # The total distance must equal L2 + d3 + end_effector contribution
+        d3 = total_distance - self.L2 - self.ee_length
         
         # Check if position is reachable
         if d3 > self.d3_max or d3 < 0:
@@ -124,23 +123,25 @@ class RRPRobot:
             current_pos = current_pos + rotated_segment
             positions.append(current_pos.copy())
         
-        # Link 2: Apply shape segments with theta1 rotation
-        for segment in self.link_2_shape:
-            segment_vec = np.array(segment)
-            rotated_segment = Rz(th1) @ segment_vec
-            current_pos = current_pos + rotated_segment
-            positions.append(current_pos.copy())
-        
-        # Prismatic joint (d3): Extension in direction controlled by theta2
+        # Joint 2 is now at current_pos (end of Link 1, start of Link 2)
+        # Calculate the direction for Link 2, prismatic joint, and end effector
         direction = np.array([
             np.sin(th2) * np.cos(th1),
             np.sin(th2) * np.sin(th1),
             np.cos(th2)
         ])
+        
+        # Link 2: Apply shape segments in the direction controlled by theta2
+        for segment in self.link_2_shape:
+            segment_length = np.linalg.norm(segment)
+            current_pos = current_pos + segment_length * direction
+            positions.append(current_pos.copy())
+        
+        # Prismatic joint (d3): Extension in the same direction
         current_pos = current_pos + d3 * direction
         positions.append(current_pos.copy())
         
-        # End effector: Apply shape segments in the same direction as d3
+        # End effector: Apply shape segments in the same direction
         for segment in self.end_effector_shape:
             segment_length = np.linalg.norm(segment)
             current_pos = current_pos + segment_length * direction
@@ -197,6 +198,9 @@ class RRPRobot:
         ax.set_ylim([-max_reach, max_reach])
         ax.set_zlim([0, max_reach*1.5])
         
+        # Set viewing angle to match the image (elevation=20, azimuth=45)
+        ax.view_init(elev=20, azim=45)
+        
         ax.set_xlabel('X (m)', fontsize=10)
         ax.set_ylabel('Y (m)', fontsize=10)
         ax.set_zlabel('Z (m)', fontsize=10)
@@ -220,15 +224,14 @@ class RRPRobot:
     
     def interpolate_trajectory(self, waypoints, total_time, fps=30):
         """
-        Generate smooth trajectory with time-based interpolation.
+        Generate trajectory.
         
         Args:
             waypoints: List of (theta1, theta2, d3) tuples or [x, y, z] positions
             total_time: Total time (in seconds) to complete the entire trajectory
             fps: Frames per second for animation (default: 30)
         
-        Returns:
-            List of interpolated joint configurations and corresponding times
+        Returns: List of interpolated joint configurations and corresponding times
         """
         # Generate evenly spaced time stamps for each waypoint
         num_waypoints = len(waypoints)
@@ -267,7 +270,7 @@ class RRPRobot:
         return trajectory, time_stamps
     
     def interactive_plot(self):
-        """Create interactive plot with sliders for joint control."""
+        """Create interactive plot with sliders for joint control"""
         fig = plt.figure(figsize=(12, 8))
         ax = fig.add_subplot(111, projection='3d')
         plt.subplots_adjust(bottom=0.25)
@@ -306,7 +309,7 @@ class RRPRobot:
     def animate_trajectory(self, trajectory, total_time=None, trajectory_type='joint', fps=30):
         """
         Animate robot following a trajectory with time-based control.
-        
+    
         Args:
             trajectory: List of waypoints (joint configs or positions)
             total_time: Total time (in seconds) to complete the trajectory. If None, uses default based on number of waypoints
@@ -407,14 +410,15 @@ if __name__ == "__main__":
     print("\n2. Creating time-based position trajectory...")
     
     position_trajectory = [
-        [2, 2, 5],
-        [1, 1, 5],
-        [-1, -1, -3],
-        [2, 2, 5],
+        [3, 3, 8],
+        [3, -3, 10],
+        [-3, -3, 8],
+        [-3, 3, 10],
+        [3, 3, 8],
     ]
     
     # Define total time for entire trajectory (in seconds)
-    total_time = 5  
+    total_time = 10  # Complete all 4 waypoints in 10 seconds
     
     print(f"Target positions (completing in {total_time}s total):")
     for i, pos in enumerate(position_trajectory):
