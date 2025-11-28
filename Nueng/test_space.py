@@ -20,6 +20,10 @@ joint_limits = [
 
 robot = RRPToolbox(link_params,joint_limits)
 
+viz = RRPVisualization(robot)
+
+viz.plot_workspace_3d()
+
 v_q = [1,1,1]
 
 DFK = robot.differential_forward_kinematics(v_q)

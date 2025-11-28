@@ -19,23 +19,23 @@ class RRPVisualization:
         
         theta1_range = [theta1_min + (theta1_max - theta1_min) * i / (theta1_samples - 1) for i in range(theta1_samples)]
         theta2_range = [theta2_min + (theta2_max - theta2_min) * i / (theta2_samples - 1) for i in range(theta2_samples)]
-        d3_range = [d3_min, d3_max]
+        d3_range = [d3_min, d3_max]  # Only sample boundary values
         
         for theta1 in theta1_range:
             for theta2 in theta2_range:
                 for d3 in d3_range:
-                    th1_rad = np.radians(theta1)
-                    th2_rad = np.radians(theta2)
+                    
+                    th1_rad = self.toolbox.deg_to_rad(theta1)
+                    th2_rad = self.toolbox.deg_to_rad(theta2)
                     
                     c1 = math.cos(th1_rad)
                     s1 = math.sin(th1_rad)
-                    c2 = math.cos(th2_rad)
-                    s2 = math.sin(th2_rad)
                     
                     current_x, current_y, current_z = 0, 0, 0
                     
                     for segment in self.toolbox.link_params[0]:
                         segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
                         rotated_x = c1 * segment_x - s1 * segment_y
                         rotated_y = s1 * segment_x + c1 * segment_y
                         rotated_z = segment_z
@@ -43,34 +43,29 @@ class RRPVisualization:
                         current_x += rotated_x
                         current_y += rotated_y
                         current_z += rotated_z
+                    
+                    c2 = math.cos(th2_rad)
+                    s2 = math.sin(th2_rad)
+                    
+                    direction_x = s2 * c1
+                    direction_y = s2 * s1
+                    direction_z = c2
                     
                     for segment in self.toolbox.link_params[1]:
-                        segment_x, segment_y, segment_z = segment
-                        rotated_x = c1 * segment_x - s1 * segment_y
-                        rotated_y = s1 * segment_x + c1 * segment_y
-                        rotated_z = segment_z
-                        
-                        current_x += rotated_x
-                        current_y += rotated_y
-                        current_z += rotated_z
+                        segment_length = math.sqrt(segment[0]**2 + segment[1]**2 + segment[2]**2)
+                        current_x += segment_length * direction_x
+                        current_y += segment_length * direction_y
+                        current_z += segment_length * direction_z
                     
-                    prismatic_x = d3 * s2 * c1
-                    prismatic_y = d3 * s2 * s1
-                    prismatic_z = d3 * c2
-                    
-                    current_x += prismatic_x
-                    current_y += prismatic_y
-                    current_z += prismatic_z
+                    current_x += d3 * direction_x
+                    current_y += d3 * direction_y
+                    current_z += d3 * direction_z
                     
                     for segment in self.toolbox.link_params[2]:
-                        segment_x, segment_y, segment_z = segment
-                        rotated_x = c1 * segment_x - s1 * segment_y
-                        rotated_y = s1 * segment_x + c1 * segment_y
-                        rotated_z = segment_z
-                        
-                        current_x += rotated_x
-                        current_y += rotated_y
-                        current_z += rotated_z
+                        segment_length = math.sqrt(segment[0]**2 + segment[1]**2 + segment[2]**2)
+                        current_x += segment_length * direction_x
+                        current_y += segment_length * direction_y
+                        current_z += segment_length * direction_z
                     
                     workspace_points.append((current_x, current_y, current_z))
         

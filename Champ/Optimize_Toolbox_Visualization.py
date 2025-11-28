@@ -238,18 +238,6 @@ class RRPToolbox:
         return tuple(joint_velocities)
     
     def get_workspace(self, theta1_samples=12, theta2_samples=12, d3_samples=6):
-        """
-        Generate workspace points by sampling joint parameters within their limits.
-        Only sample d3 at its boundaries (d3_min and d3_max) to show only outer surface.
-        
-        Args:
-            theta1_samples: Number of samples for theta1
-            theta2_samples: Number of samples for theta2
-            d3_samples: Not used - always samples only d3_min and d3_max
-            
-        Returns:
-            workspace_points: List of (x, y, z) positions reachable by the robot
-        """
         workspace_points = []
         
         theta1_min, theta1_max = self.joint_limits[0]

@@ -412,3 +412,19 @@ class RRPToolbox:
         is_singular = self.check_singularity(self.current_joint_config)
         print(f"Singularity Status   : {'SINGULAR' if is_singular else 'OK'}")
         print("=" * 50)
+        
+    def Configuration_Space_Calculation(self, target_position, target_velocity, config=False):
+        
+        joint_config   = self.inverse_kinematics(target_position,config)
+        
+        joint_velocity = self. differential_inverse_kinematics(target_velocity,config)
+        
+        return (joint_config,joint_velocity)
+    
+    def Task_Space_Calculation(self, joint_config, joint_velocity, config=False):
+        
+        ee_position = self.forward_kinematics(joint_config, config)
+        
+        ee_velocity = self.differential_forward_kinematics(joint_velocity, config)
+        
+        return (ee_position,ee_velocity)
