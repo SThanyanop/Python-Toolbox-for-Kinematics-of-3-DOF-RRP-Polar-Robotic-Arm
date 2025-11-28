@@ -1968,11 +1968,11 @@ p₀ = (8.000, 0.000, 5.500)
 
 **เกณฑ์การยอมรับ:**
 ```
-|Pₓ_actual - Pₓ_expected| < Eₚₒₛ
-|Pᵧ_actual - Pᵧ_expected| < Eₚₒₛ
-|Pz_actual - Pz_expected| < Eₚₒₛ
+|Pₓ_actual - Pₓ_expected| < eₚₒₛ
+|Pᵧ_actual - Pᵧ_expected| < eₚₒₛ
+|Pz_actual - Pz_expected| < eₚₒₛ
 ```
-โดยที่ Eₚₒₛ = 10⁻⁶ m (machine precision for double floating-point)
+โดยที่ eₚₒₛ = 10⁻⁶ m
 
 **ผลการทดสอบ:**
 ```python
@@ -2148,8 +2148,8 @@ For each q_test:
     2. q_computed = IK(p_target)       # Inverse
     3. p_verify = FK(q_computed)       # Forward again
     4. Calculate errors:
-       ε_joint = ||q_test - q_computed||
-       ε_position = ||p_target - p_verify||
+       e_joint = ||q_test - q_computed||
+       e_position = ||p_target - p_verify||
 ```
 
 **Test Configurations:**
@@ -2164,20 +2164,20 @@ For each q_test:
 
 **Acceptance Criteria:**
 ```
-ε_position < 10⁻⁶ m     (Position accuracy)
-ε_joint[θ] < 0.01°      (Angular accuracy)
-ε_joint[d] < 10⁻⁶ m     (Linear accuracy)
+e_position < 10⁻⁶ m     (Position accuracy)
+e_joint[θ] < 0.01°      (Angular accuracy)
+e_joint[d] < 10⁻⁶ m     (Linear accuracy)
 ```
 
 **Statistical Analysis:**
 ```
-Mean position error: μ_ε < 10⁻⁶
-Standard deviation: σ_ε < 10⁻⁶
-Maximum error: max(ε) < 10⁻⁵
+Mean position error < 10⁻⁶
+Standard deviation < 10⁻⁶
+Maximum error < 10⁻⁵
 Success rate: 100%
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
 #### Test Case 11.4.2: Boundary Conditions
 
@@ -2203,97 +2203,13 @@ p_min = (8.000, 0.000, 5.500)
 p_vert = (4.500, 0.000, 8.000)
 ```
 
-**ผลการทดสอบ:** PASS ✓ for all boundary cases
+**ผลการทดสอบ:** PASS
 
-### 11.5 Unit Testing: Jacobian Matrix
-
-**Hypothesis:** Jacobian matrix ที่คำนวณด้วย analytical method ให้ผลลัพธ์เดียวกันกับ numerical differentiation
-
-**วิธีการ:** Finite Difference Approximation
-
-#### Test Case 11.5.1: Numerical vs Analytical Jacobian
-
-**Numerical Jacobian Computation:**
-
-```
-J_numerical[i,j] = ∂pᵢ/∂qⱼ ≈ [pᵢ(q + Δqⱼ) - pᵢ(q)] / Δq
-
-โดยที่:
-- Δq = 10⁻⁶ (perturbation step)
-- i ∈ {x, y, z}
-- j ∈ {θ₁, θ₂, d₃}
-```
-
-**Test Configuration:**
-```
-q_test = [30°, 60°, 2.0]
-```
-
-**Analytical Jacobian:**
-```python
-J_analytical = get_jacobian([30, 60, 2.0])
-```
-
-**Numerical Jacobian:**
-```python
-delta = 1e-6
-J_numerical = np.zeros((3, 3))
-
-for j in range(3):
-    q_plus = q_test.copy()
-    q_plus[j] += delta
-    
-    p_plus = FK(q_plus)
-    p_base = FK(q_test)
-    
-    J_numerical[:, j] = (p_plus - p_base) / delta
-```
-
-**Error Metric:**
-```
-E = ||J_analytical - J_numerical||_F / ||J_analytical||_F
-
-โดยที่ ||·||_F คือ Frobenius norm
-```
-
-**Acceptance Criterion:**
-```
-E < 10⁻⁴ (0.01% relative error)
-```
-
-**ผลการทดสอบ:**
-```
-E = 3.2 × 10⁻⁵ < 10⁻⁴  ✓ PASS
-```
-
-#### Test Case 11.5.2: Jacobian Properties Verification
-
-**Mathematical Properties to Verify:**
-
-1. **Rank at Non-singular Configurations:**
-```python
-det(J) ≠ 0  for non-singular configurations
-rank(J) = 3
-```
-
-2. **Dimension Check:**
-```python
-J.shape == (3, 3)  ✓
-```
-
-3. **Units Consistency:**
-```python
-J[:, 0:2] units: [m/rad]
-J[:, 2] units: [m/m] = dimensionless
-```
-
-**ผลการทดสอบ:** PASS ✓
-
-### 11.6 Integration Testing: Differential Kinematics
+### 11.5 Integration Testing: Differential Kinematics
 
 **Hypothesis:** การคำนวณ differential kinematics (forward และ inverse) มีความสอดคล้องกัน
 
-#### Test Case 11.6.1: Velocity Consistency
+#### Test Case 11.5.1: Velocity Consistency
 
 **Procedure:**
 
@@ -2303,7 +2219,7 @@ Given: q = [30°, 45°, 2.0]
 
 1. Compute: ẋ = J(q)q̇         (Forward Diff Kinematics)
 2. Compute: q̇' = J⁻¹(q)ẋ       (Inverse Diff Kinematics)
-3. Verify: ||q̇ - q̇'|| < ε
+3. Verify: ||q̇ - q̇'|| < 10⁻⁶
 ```
 
 **Expected Result:**
@@ -2313,19 +2229,19 @@ q̇' ≈ q̇
 
 **Acceptance Criterion:**
 ```
-||q̇ - q̇'||∞ < 10⁻⁶ rad/s (or m/s)
+||q̇ - q̇'|| < 10⁻⁶ rad/s (or m/s)
 ```
 
 **ผลการทดสอบ:**
 ```
-error = [2.3e-10, 1.8e-10, 5.1e-11]  < 10⁻⁶  ✓ PASS
+error = [2.3e-10, 1.8e-10, 5.1e-11]  < 10⁻⁶  PASS
 ```
 
-### 11.7 Integration Testing: High-Level Kinematics Functions
+### 11.6 Integration Testing: High-Level Kinematics Functions
 
 **Hypothesis:** ฟังก์ชันระดับสูง (Task_Space_Calculation และ Configuration_Space_Calculation) ทำงานได้ถูกต้องและสอดคล้องกัน
 
-#### Test Case 11.7.1: Task Space Calculation Consistency
+#### Test Case 11.6.1: Task Space Calculation Consistency
 
 **วัตถุประสงค์:** ตรวจสอบว่า Task_Space_Calculation ให้ผลลัพธ์เดียวกันกับการเรียก FK และ Forward Diff Kinematics แยก
 
@@ -2358,13 +2274,13 @@ assert all(abs(vel1[i] - vel2[i]) < 1e-10 for i in range(3))
 
 **Expected Result:**
 ```
-Position match: ✓
-Velocity match: ✓
+Position match:  matched
+Velocity match:  matched
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
-#### Test Case 11.7.2: Configuration Space Calculation Consistency
+#### Test Case 11.6.2: Configuration Space Calculation Consistency
 
 **วัตถุประสงค์:** ตรวจสอบว่า Configuration_Space_Calculation ให้ผลลัพธ์เดียวกันกับการเรียก IK และ Inverse Diff Kinematics แยก
 
@@ -2398,13 +2314,13 @@ assert all(abs(vel1[i] - vel2[i]) < 1e-10 for i in range(3))
 
 **Expected Result:**
 ```
-Configuration match: ✓
-Velocity match: ✓
+Configuration match:  matched
+Velocity match:  matched
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS  matched
 
-#### Test Case 11.7.3: Round-trip Consistency (High-Level Functions)
+#### Test Case 11.6.3: Round-trip Consistency (High-Level Functions)
 
 **วัตถุประสงค์:** ตรวจสอบความสอดคล้องแบบ round-trip โดยใช้ฟังก์ชันระดับสูง
 
@@ -2416,23 +2332,14 @@ original_config = [45.0, 60.0, 3.0]
 original_vel = [5.0, -3.0, 0.2]
 
 # 1. Configuration → Task Space
-task_pos, task_vel = toolbox.Task_Space_Calculation(
-    original_config, 
-    original_vel
-)
+task_pos, task_vel = toolbox.Task_Space_Calculation(original_config, original_vel)
 
 # 2. Task Space → Configuration
-computed_config, computed_vel = toolbox.Configuration_Space_Calculation(
-    task_pos, 
-    task_vel,
-    config=False
-)
+computed_config, computed_vel = toolbox.Configuration_Space_Calculation(task_pos, task_vel,config=False)
 
 # 3. Verify round-trip accuracy
-config_error = [abs(original_config[i] - computed_config[i]) 
-                for i in range(3)]
-vel_error = [abs(original_vel[i] - computed_vel[i]) 
-             for i in range(3)]
+config_error = [abs(original_config[i] - computed_config[i]) for i in range(3)]
+vel_error = [abs(original_vel[i] - computed_vel[i]) for i in range(3)]
 
 assert all(e < 0.01 for e in config_error)  # 0.01° or 0.01 units
 assert all(e < 1e-6 for e in vel_error)      # 1e-6 units/s
@@ -2444,9 +2351,9 @@ Configuration error: < 0.01° (angular), < 0.01 units (linear)
 Velocity error: < 10⁻⁶ units/s
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
-#### Test Case 11.7.4: Error Propagation Test
+#### Test Case 11.6.4: Error Propagation Test
 
 **วัตถุประสงค์:** ทดสอบการจัดการ error ใน high-level functions
 
@@ -2463,7 +2370,7 @@ try:
     assert False, "Should raise ValueError"
 except ValueError as e:
     assert "unreachable" in str(e).lower()
-    # PASS ✓
+    # PASS
 ```
 
 2. **Invalid Joint Configuration:**
@@ -2476,7 +2383,7 @@ try:
     assert False, "Should raise ValueError"
 except ValueError as e:
     assert "limits" in str(e).lower()
-    # PASS ✓
+    # PASS
 ```
 
 3. **Singular Configuration:**
@@ -2491,18 +2398,18 @@ try:
     # อาจ PASS หรือ raise error ขึ้นกับ threshold
 except ValueError as e:
     assert "singular" in str(e).lower()
-    # Expected behavior ✓
+    # Expected behavior
 ```
 
-**ผลการทดสอบ:** PASS ✓ (Error handling works correctly)
+**ผลการทดสอบ:** PASS
 
-### 11.8 System Testing: Singularity Detection
+### 11.7 System Testing: Singularity Detection
 
 **Hypothesis:** ระบบสามารถตรวจจับ singular configurations ได้อย่างถูกต้อง
 
 **วิธีการ:** Test with Known Singularities
 
-#### Test Case 11.8.1: Known Singular Configurations
+#### Test Case 11.7.1: Known Singular Configurations
 
 **Singular Configuration Types:**
 
@@ -2545,13 +2452,13 @@ det(J) >> 0
 | False Positive Rate | 0.5% | < 1% |
 | False Negative Rate | 0% | 0% |
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
-### 11.9 System Testing: Workspace Validation
+### 11.8 System Testing: Workspace Validation
 
 **Hypothesis:** ระบบสามารถระบุว่าจุดใน task space อยู่ใน workspace หรือไม่ได้อย่างถูกต้อง
 
-#### Test Case 11.9.1: Reachability Classification
+#### Test Case 11.8.1: Reachability Classification
 
 **Test Dataset:**
 
@@ -2586,73 +2493,10 @@ points_close = [
 Accuracy = (TP + TN) / (TP + TN + FP + FN)
 
 Target: > 99%
-Actual: 100%  ✓
+Actual: 100%  
 ```
 
-**ผลการทดสอบ:** PASS ✓
-
-### 11.10 Performance Benchmarking
-
-**Objective:** วัดประสิทธิภาพเชิงคำนวณของระบบ
-
-**Test Environment:**
-- CPU: [Specification]
-- RAM: [Specification]
-- Python Version: 3.x
-- Number of iterations: 10,000
-
-**Benchmark Results:**
-
-| Function | Mean Time (ms) | Std Dev (ms) | Max Time (ms) | Target (ms) |
-|----------|----------------|--------------|---------------|-------------|
-| Forward Kinematics | 0.042 | 0.003 | 0.089 | < 1.0 |
-| Inverse Kinematics | 0.156 | 0.012 | 0.234 | < 2.0 |
-| Jacobian Calculation | 0.078 | 0.005 | 0.145 | < 1.0 |
-| Singularity Check | 0.091 | 0.007 | 0.167 | < 1.0 |
-| Workspace Check | 0.034 | 0.002 | 0.071 | < 0.5 |
-
-**Performance Score:** ALL PASS ✓
-
-**Computational Complexity Verification:**
-
-| Function | Theoretical | Measured | Status |
-|----------|-------------|----------|--------|
-| FK | O(1) | O(1) | ✓ |
-| IK | O(1) | O(1) | ✓ |
-| Jacobian | O(1) | O(1) | ✓ |
-
-### 11.11 Summary of Validation Results
-
-**Test Coverage:**
-
-| Category | Tests Planned | Tests Executed | Tests Passed | Pass Rate |
-|----------|---------------|----------------|--------------|-----------|
-| Unit Tests | 15 | 15 | 15 | 100% |
-| Integration Tests | 9 | 9 | 9 | 100% |
-| System Tests | 8 | 8 | 8 | 100% |
-| **Total** | **32** | **32** | **32** | **100%** |
-
-**Accuracy Summary:**
-
-| Metric | Mean Error | Std Dev | Max Error | Threshold | Status |
-|--------|------------|---------|-----------|-----------|--------|
-| FK Position | 1.2×10⁻⁹ m | 3.4×10⁻¹⁰ m | 4.5×10⁻⁹ m | 10⁻⁶ m | ✓ PASS |
-| IK Position | 2.1×10⁻⁹ m | 5.6×10⁻¹⁰ m | 8.3×10⁻⁹ m | 10⁻⁶ m | ✓ PASS |
-| IK Joint Angle | 3.2×10⁻⁴ ° | 1.1×10⁻⁴ ° | 7.8×10⁻⁴ ° | 0.01° | ✓ PASS |
-| Jacobian Error | 2.8×10⁻⁵ | 8.9×10⁻⁶ | 9.1×10⁻⁵ | 10⁻⁴ | ✓ PASS |
-| Velocity Error | 4.3×10⁻¹⁰ m/s | 1.2×10⁻¹⁰ m/s | 1.5×10⁻⁹ m/s | 10⁻⁶ m/s | ✓ PASS |
-
-**Conclusion:**
-
-ระบบ Python Toolbox for Kinematics Analysis of 3-DOF (RRP) Polar Robotic Arm ผ่านการตรวจสอบความถูกต้องและการทดสอบทุกระดับ ตั้งแต่ unit testing, integration testing ไปจนถึง system testing โดยมีอัตราความสำเร็จ 100% และความแม่นยำสูงกว่าเกณฑ์ที่กำหนดในทุกกรณีทดสอบ
-
-ผลการทดสอบยืนยันว่า:
-1. **ความถูกต้อง (Correctness):** การคำนวณทางคณิตศาสตร์ถูกต้องตามทฤษฎี
-2. **ความแม่นยำ (Accuracy):** ความคลาดเคลื่อนอยู่ในระดับ machine precision
-3. **ความน่าเชื่อถือ (Reliability):** ผ่านการทดสอบ 100% ในทุกกรณี
-4. **ประสิทธิภาพ (Performance):** เวลาในการคำนวณต่ำกว่าเป้าหมายที่กำหนด
-
-ระบบพร้อมสำหรับการใช้งานในการศึกษาและวิเคราะห์จลนศาสตร์ของแขนกล RRP
+**ผลการทดสอบ:** PASS 
 
 ---
 
@@ -2872,45 +2716,9 @@ p = (6.0, 6.0, 8.0)  # จุดที่อาจมีหลายคำตอ
 2. คำนวณ FK(q₁) → p₁
 3. ตรวจสอบ ||p - p₁|| < ε
 
-### 11.4 Jacobian Matrix Validation
+### 11.ภ Differential Kinematics Validation
 
-**วัตถุประสงค์:** ยืนยันความถูกต้องของ Jacobian Matrix โดยใช้ Numerical Differentiation
-
-#### Test Case 9: Numerical Jacobian Comparison
-
-**Method:**
-
-```python
-def numerical_jacobian(q, delta=1e-6):
-    J_num = []
-    p0 = forward_kinematics(q)
-    
-    for i in range(3):
-        q_plus = q.copy()
-        q_plus[i] += delta
-        p_plus = forward_kinematics(q_plus)
-        
-        # คำนวณอนุพันธ์ย่อย
-        col = [(p_plus[j] - p0[j]) / delta for j in range(3)]
-        J_num.append(col)
-    
-    return transpose(J_num)
-
-# Test
-q_test = [30, 60, 2.0]
-J_analytical = get_jacobian(q_test)
-J_numerical = numerical_jacobian(q_test)
-
-# เปรียบเทียบ
-for i in range(3):
-    for j in range(3):
-        error = abs(J_analytical[i][j] - J_numerical[i][j])
-        assert error < 1e-4
-```
-
-### 11.5 Differential Kinematics Validation
-
-#### Test Case 10: Velocity Consistency
+#### Test Case 9: Velocity Consistency
 
 **Method:**
 ```python
@@ -2928,9 +2736,9 @@ for i in range(3):
     assert abs(q_dot[i] - q_dot_verify[i]) < 1e-6
 ```
 
-### 11.6 Singularity Detection Validation
+### 11.5 Singularity Detection Validation
 
-#### Test Case 11: Known Singularities
+#### Test Case 10: Known Singularities
 
 **Singularity Configurations:**
 
@@ -2952,83 +2760,7 @@ q_normal = [30, 45, 2.5]
 assert check_singularity(q_normal) == False
 ```
 
-### 11.7 Workspace Boundary Validation
 
-#### Test Case 12: Reachability Test
-
-**Test Points:**
-
-1. **Inside Workspace:**
-```python
-p_inside = (7.0, 0.0, 6.0)
-is_reachable, msg = check_reachable(p_inside)
-assert is_reachable == True
-```
-
-2. **Outside Workspace (Too Far):**
-```python
-p_far = (20.0, 0.0, 10.0)
-is_reachable, msg = check_reachable(p_far)
-assert is_reachable == False
-assert "too far" in msg.lower()
-```
-
-3. **Outside Workspace (Too Close):**
-```python
-p_close = (0.1, 0.0, 0.1)
-is_reachable, msg = check_reachable(p_close)
-assert is_reachable == False
-assert "too close" in msg.lower()
-```
-
-### 11.8 Accuracy Metrics
-
-**เกณฑ์การยอมรับ:**
-
-| Test Type | Metric | Threshold |
-|-----------|--------|-----------|
-| Forward Kinematics | Position Error | < 10⁻⁶ m |
-| Inverse Kinematics | Round-trip Error | < 10⁻⁶ m |
-| | Joint Angle Error | < 0.01° |
-| Jacobian Matrix | Element-wise Error | < 10⁻⁴ |
-| Differential Kinematics | Velocity Error | < 10⁻⁶ m/s |
-| Singularity Detection | False Positive Rate | < 1% |
-| | False Negative Rate | 0% |
-
-### 11.10 Performance Benchmarking
-
-**Computational Time Measurement:**
-
-```python
-import time
-
-# Forward Kinematics
-start = time.time()
-for _ in range(10000):
-    forward_kinematics([30, 45, 2.5])
-fk_time = (time.time() - start) / 10000
-
-# Inverse Kinematics
-start = time.time()
-for _ in range(10000):
-    inverse_kinematics((6.0, 6.0, 8.0))
-ik_time = (time.time() - start) / 10000
-
-# Jacobian Calculation
-start = time.time()
-for _ in range(10000):
-    get_jacobian([30, 45, 2.5])
-jac_time = (time.time() - start) / 10000
-
-print(f"FK: {fk_time*1000:.3f} ms")
-print(f"IK: {ik_time*1000:.3f} ms")
-print(f"Jacobian: {jac_time*1000:.3f} ms")
-```
-
-**Expected Performance:**
-- Forward Kinematics: < 1 ms
-- Inverse Kinematics: < 2 ms
-- Jacobian Calculation: < 1 ms
 
 ### 11.10 Validation Summary
 
@@ -3044,14 +2776,17 @@ print(f"Jacobian: {jac_time*1000:.3f} ms")
 | TC-6 | IK Round-trip |  PASS | < 10⁻⁶ |
 | TC-7 | IK Known Position | PASS | < 10⁻⁶ |
 | TC-8 | IK Multiple Solutions | PASS | < 10⁻⁶ |
-| TC-9 | Jacobian Numerical |  PASS | < 10⁻⁴ |
-| TC-10 | Differential Consistency |  PASS | < 10⁻⁶ |
-| TC-11 | Singularity Detection |  PASS | 100% |
-| TC-12 | Workspace Boundary |  PASS | 100% |
-
-**Conclusion:**
+| TC-9 | Differential Consistency |  PASS | < 10⁻⁶ |
+| TC-10 | Singularity Detection |  PASS | 100% |
 ระบบผ่านการทดสอบทุกกรณีตามเกณฑ์ที่กำหนด แสดงให้เห็นว่า implementation มีความถูกต้องและเชื่อถือได้สำหรับการใช้งาน
 
+### 11.11 Summary of Validation Results
+
+ตั้งแต่ unit testing, integration testing ไปจนถึง system testing ผ่านการทดสอบทั้งหมด
+
+**Conclusion:**
+
+ระบบ Python Toolbox for Kinematics Analysis of 3-DOF (RRP) Polar Robotic Arm ผ่านการตรวจสอบความถูกต้องและการทดสอบทุกระดับ ตั้งแต่ unit testing, integration testing ไปจนถึง system testing โดยมีอัตราความสำเร็จ 100% และความแม่นยำสูงกว่าเกณฑ์ที่กำหนดในทุกกรณีทดสอบ
 ---
 
 ## สัญลักษณ์ที่ใช้ (Notation)
