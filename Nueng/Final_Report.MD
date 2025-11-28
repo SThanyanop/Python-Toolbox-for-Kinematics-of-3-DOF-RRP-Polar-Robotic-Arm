@@ -307,7 +307,6 @@ q = [θ₁, θ₂, d₃]ᵀ
 
 **Input:**
 ```
-q = [θ₁, θ₂, d₃]ᵀ
 q̇ = [θ̇₁, θ̇₂, ḋ₃]ᵀ
 ```
 
@@ -330,7 +329,6 @@ q̇ = J⁻¹(q)ẋ
 
 **Input:**
 ```
-q = [θ₁, θ₂, d₃]ᵀ
 ẋ = [ẋₑ, ẏₑ, żₑ]ᵀ
 ```
 
@@ -407,7 +405,7 @@ joint_velocity = (θ̇₁, θ̇₂, ḋ₃)
 - Current pose (q)
 
 **Output:**
-- 3D visualization (static image)
+- 3D visualization (Interactive)
 
 **Process:**
 1. คำนวณตำแหน่งของลิงก์และข้อต่อทั้งหมด
@@ -2776,6 +2774,7 @@ Link 1 จากการวาดมือ
 ![alt text](Img/Link1_Handdraw.jpg)
 
 Link 1 จากการ Plot โดย Code
+
 ![alt text](Img/Link1%20(Small).png)
 
 **สรุปผลการทดลอง :** จากผลการทดสอบ พบว่า Link 1 จากการวาดมือ และ Link 1 จากการ Plot โดย code นั้นมีรูปแบบและความยาวเหมือนกัน ดังนั้นลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง
@@ -2811,6 +2810,23 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 ```
 **สรุปผลการทดลอง :** จากผลการทดสอบสังเกตุได้ว่าการเคลื่อนที่ของ End effector อยู่ในตำแหน่งที่ตรงกับ End Effector Path ดังนั้นแขนกลมีการเคลื่อนที่ที่ถูกต้อง
 
+#### 11.6.1 Validate 3D Workspace
+**Hypothesis :** สามารถจำลอง 3D Workspace ได้อย่างถูกต้อง
+#### Test Case 13: Plot 3D Workspace Check
+**วัตถุประสงค์ :** 3D workspace นี้เป็นพื้นที่ workspace ที่หุ่นแขนกลของหุ่นยนต์สามารถเคลื่อนที่ได้อย่างถูกต้องหรือไม่
+
+โดยจะวัดตำแหน่งในขณะที่แขนหุ่นยนต์มี parameter ดังนี้
+(0,0,0),(90,0,0),(0,180,0),(0,0,5),(90,180,0),(0,180,5),(90,0,5),(90,180,5)
+
+**ผลลัพธ์ที่คาดหวัง :** ตำแหน่ง พื้นที่และรูปร่างของ 3D Workspace ถูกต้อง**
+
+**ผลการทดสอบ :**
+
+![alt text](Img/image-1.png)
+
+จากรูป จุด x สีแดงแสดงถึงตำแหน่งที่ vertex ณ ริมที่สุดควรจะอยู่ แต่เมื่อ plot ค่าจริง เกิดการคลาดเคลื่อนของตำแหน่งเกิดขึ้น หมายความว่า ตำแหน่งที่ workspace นี้แสดงยังไม่ถูกต้องทั้งหมด
+
+จากปัญหาดังกล่าว คาดว่าสาเหตุเกิดจากระหว่างการ plot ค่าและการคำนวณอาจมีการคำนวณพลาดก่อนที่จะนำค่ามา plot ซึ่งทำให้เกิดปัญหาดังกล่าวขึ้น
 
 ### 11.10 Validation Summary
 
@@ -2830,15 +2846,16 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 | TC-10 | Singularity Detection |  PASS |
 | TC-11 | Interactive Visualization |  PASS |
 | TC-12 | Trajectory Visualization |  PASS |
+| TC-13 | 3D Workspace |  FAIL |
 ระบบผ่านการทดสอบทุกกรณีตามเกณฑ์ที่กำหนด แสดงให้เห็นว่า implementation มีความถูกต้องและเชื่อถือได้สำหรับการใช้งาน
 
 ### 11.11 Summary of Validation Results
 
-ตั้งแต่ unit testing, integration testing ไปจนถึง system testing ผ่านการทดสอบทั้งหมด
+ตั้งแต่ unit testing, integration testing ไปจนถึง system testing ผ่านการทดสอบเกือบทั้งหมด ยกเว้น 3D Workspace
 
 **Conclusion:**
 
-ระบบ Python Toolbox for Kinematics Analysis of 3-DOF (RRP) Polar Robotic Arm ผ่านการตรวจสอบความถูกต้องและการทดสอบทุกระดับ ตั้งแต่ unit testing, integration testing ไปจนถึง system testing
+ระบบ Python Toolbox for Kinematics Analysis of 3-DOF (RRP) Polar Robotic Arm ผ่านการตรวจสอบความถูกต้องและการทดสอบเกือบทุกระดับ ตั้งแต่ unit testing, integration testing ไปจนถึง system testing ยกเว้น 3D Workspace ที่ยังคงมีการระบุพิกัดที่ผิดพลาดอยู่
 
 ---
 
@@ -2849,7 +2866,7 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 2. เพื่อพัฒนา Python Toolbox สำหรับการคำนวณ Forward Kinematics, Inverse Kinematics และ Differential Kinematics ของ Polar Robotic Arm
 3. เพื่อพัฒนาระบบแสดงภาพแบบสามมิติ (3D Visualization) สำหรับการแสดงท่าทาง (Pose) และการเคลื่อนไหว (Animation) ของแขนกล
 
-สามารถกล่าวได้ว่าระหว่างปฎิบัติงานผู้จัดทำได้ดำเนินการจัดทำและแก้ไขปัญหาที่พบได้เกือบทั้งหมด เนื่อง 3D Workspace ยังไม่สามารถทำงานได้อย่างมีประสิทธิภาพ แต่ยังคงกล่าวได้ว่าจากการทดสอบทั้งหมดสามารถยืนยันได้ว่า สามารถพัฒนา Python Toolbox สำหรับการคำนวณ Forward Kinematics, Inverse Kinematics และ Differential Kinematics ของ Polar Robotic Arm และ ระบบแสดงภาพแบบสามมิติ (3D Visualization) สำหรับการแสดงท่าทาง (Pose) และการเคลื่อนไหว (Animation) ของแขนกล ยังคงสามารถบรรลุวัตถุประสงค์ได้
+สามารถกล่าวได้ว่าระหว่างปฎิบัติงานผู้จัดทำได้ดำเนินการจัดทำและแก้ไขปัญหาที่พบได้เกือบทั้งหมด เนื่อง 3D Workspace ยังไม่สามารถทำงานได้อย่างมีประสิทธิภาพ แต่ยังคงกล่าวได้ว่าจากการทดสอบทั้งหมดสามารถยืนยันได้ว่า สามารถพัฒนา Python Toolbox สำหรับการคำนวณ Forward Kinematics, Inverse Kinematics และ Differential Kinematics ของ Polar Robotic Arm และ ระบบแสดงภาพแบบสามมิติ (3D Visualization) สำหรับการแสดงท่าทาง (Pose) และการเคลื่อนไหว (Animation) ของแขนกล ยังคงสามารถบรรลุวัตถุประสงค์ได้ และจากผลการศึกษาที่คาดหวัง ประสบความสำเร็จเกือบทั้งหมดยกเว้น 3D Workspace
 
 ## สัญลักษณ์ที่ใช้ (Notation)
 
@@ -2876,7 +2893,6 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 - ⁰Tₑ: Transformation from base frame to end effector frame
 - J(q): Jacobian matrix
 - J⁻¹: Jacobian inverse
-- J⁺: Moore-Penrose pseudoinverse
 
 ### Trigonometric Notation
 - cᵢ ≡ cos(θᵢ)
