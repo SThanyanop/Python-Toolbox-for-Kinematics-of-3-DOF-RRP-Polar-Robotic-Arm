@@ -1,6 +1,6 @@
 # การใช้งาน RRP 3D Visualization
 
- Python Toolbox สำหรับจำลองแขนกล RRP (Revolute-Revolute-Prismatic) ด้วยการคำนวณจลนศาสตร์และการแสดงภาพ 3D
+ Python Toolbox สำหรับการแสดงท่าทาง (Pose) และการเคลื่อนไหว (Animation) ของแขนกล
 
 ## Installation & Setup
 

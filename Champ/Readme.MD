@@ -7,7 +7,7 @@
   - [Installation \& Setup](#installation--setup)
   - [วิธีการใช้งานเบื้องต้น](#วิธีการใช้งานเบื้องต้น)
     - [1. Setup Toobox](#1-setup-toobox)
-    - [2. Main function](#2-main-function)
+    - [2. Basic function](#2-basic-function)
     - [3. plot workspace](#3-plot-workspace)
   - [visualization-features](#visualization-features)
     - [controller component](#controller-component)
@@ -69,13 +69,24 @@ joint_limits = [
     (3, 5)        # d3 limits (meters)
 ]
 ```
-### 2. Main function
+### 2. Basic function
 ```python
 Configuration_Space_Calculation(self, target_position, target_velocity, config=False)
 ```
+**Parameter**
+- `target_position`: ตำแหน่งปลายแขนที่ต้องการ
+- `target_velocity`: ความเร็วปลายแขนที่ต้องการ
+**Output**
+ตำแหน่งและความเร็วใน configuration space
+
 ```python
 Task_Space_Calculation(self, joint_config, joint_velocity, config=False)
 ```
+**Parameter**
+- `joint_config`: ตำแหน่ง configuration space
+- `joint_velocity`: ความเร็ว configuration space
+**Output**
+ตำแหน่งและความเร็วของ end effector
 
 ```python
 forward_kinematics(theta1, theta2, d3)
