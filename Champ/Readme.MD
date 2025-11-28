@@ -37,6 +37,7 @@ from Optimize_Toolbox import RRPToolbox
 ## วิธีการใช้งานเบื้องต้น
 1. [Setup Toolbox แขนหุ่นยนต์ RRP](#1-setup-toobox)
 2. [ลอง plot workspace](#2-plot-workspace)
+3. [ลองใช้ component ที่มีใน plot workspace](#visualization-features)
 
 ### 1. Setup Toobox
 ```python
