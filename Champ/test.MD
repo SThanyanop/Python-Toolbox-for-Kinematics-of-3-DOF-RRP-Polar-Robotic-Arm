@@ -121,14 +121,17 @@ In the workspace generation, a simplified approach using direct rotation matrice
 **For Link 1 and Link 2 segments:**
 
 Rotation by θ₁ around Z-axis:
+
 $$R_z(\theta_1) = \begin{bmatrix} \cos\theta_1 & -\sin\theta_1 & 0 \\ \sin\theta_1 & \cos\theta_1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$$
 
 **Applied to each segment:**
+
 $$\begin{bmatrix} x' \\ y' \\ z' \end{bmatrix} = R_z(\theta_1) \begin{bmatrix} x \\ y \\ z \end{bmatrix}$$
 
 **For Prismatic Joint (d₃):**
 
 Direction vector controlled by θ₂:
+
 $$\mathbf{d} = \begin{bmatrix} \sin(\theta_2)\cos(\theta_1) \\ \sin(\theta_2)\sin(\theta_1) \\ \cos(\theta_2) \end{bmatrix}$$
 
 **Extension:**
