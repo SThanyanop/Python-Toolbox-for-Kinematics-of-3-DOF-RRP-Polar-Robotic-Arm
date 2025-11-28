@@ -287,42 +287,34 @@ class RRPToolbox:
                         current_y += rotated_y
                         current_z += rotated_z
                     
-                    # Apply Link 2 segments (rotated by theta1 around Z)
-                    for segment in self.link_params[1]:
-                        segment_x, segment_y, segment_z = segment
-                        # Rotate by theta1 around Z axis
-                        rotated_x = c1 * segment_x - s1 * segment_y
-                        rotated_y = s1 * segment_x + c1 * segment_y
-                        rotated_z = segment_z
-                        
-                        current_x += rotated_x
-                        current_y += rotated_y
-                        current_z += rotated_z
-                    
-                    # Apply Prismatic joint (d3) with direction controlled by theta2
-                    # Direction: [sin(theta2)*cos(theta1), sin(theta2)*sin(theta1), cos(theta2)]
+                    # Joint 2 is now at current position (end of Link 1, start of Link 2)
+                    # Calculate the direction for Link 2, prismatic joint, and end effector
+                    # This direction is controlled by theta2
                     c2 = math.cos(th2_rad)
                     s2 = math.sin(th2_rad)
                     
-                    prismatic_x = d3 * s2 * c1
-                    prismatic_y = d3 * s2 * s1
-                    prismatic_z = d3 * c2
+                    direction_x = s2 * c1
+                    direction_y = s2 * s1
+                    direction_z = c2
                     
-                    current_x += prismatic_x
-                    current_y += prismatic_y
-                    current_z += prismatic_z
+                    # Apply Link 2 segments in the direction controlled by theta2
+                    for segment in self.link_params[1]:
+                        segment_length = math.sqrt(segment[0]**2 + segment[1]**2 + segment[2]**2)
+                        current_x += segment_length * direction_x
+                        current_y += segment_length * direction_y
+                        current_z += segment_length * direction_z
                     
-                    # Apply End effector segments
+                    # Apply Prismatic joint (d3) in the same direction
+                    current_x += d3 * direction_x
+                    current_y += d3 * direction_y
+                    current_z += d3 * direction_z
+                    
+                    # Apply End effector segments in the same direction
                     for segment in self.link_params[2]:
-                        segment_x, segment_y, segment_z = segment
-                        # Rotate by theta1 around Z axis
-                        rotated_x = c1 * segment_x - s1 * segment_y
-                        rotated_y = s1 * segment_x + c1 * segment_y
-                        rotated_z = segment_z
-                        
-                        current_x += rotated_x
-                        current_y += rotated_y
-                        current_z += rotated_z
+                        segment_length = math.sqrt(segment[0]**2 + segment[1]**2 + segment[2]**2)
+                        current_x += segment_length * direction_x
+                        current_y += segment_length * direction_y
+                        current_z += segment_length * direction_z
                     
                     workspace_points.append((current_x, current_y, current_z))
         
@@ -625,27 +617,30 @@ class RRPToolbox:
         
         link1_end_idx = len(robot_positions) - 1
         
-        # Link 2: Process each segment
-        for segment in self.link_params[1]:
-            segment_vec = np.array(segment)
-            rotated_segment = Rz(th1) @ segment_vec
-            current_pos = current_pos + rotated_segment
-            robot_positions.append(current_pos.copy())
-        
-        link2_end_idx = len(robot_positions) - 1
-        
-        # Prismatic joint (d3): Extend in direction controlled by theta2
+        # Joint 2 is now at current_pos (end of Link 1, start of Link 2)
+        # Calculate the direction for Link 2, prismatic joint, and end effector
+        # This direction is controlled by theta2
         direction = np.array([
             np.sin(th2) * np.cos(th1),
             np.sin(th2) * np.sin(th1),
             np.cos(th2)
         ])
+        
+        # Link 2: Apply shape segments in the direction controlled by theta2
+        for segment in self.link_params[1]:
+            segment_length = np.linalg.norm(np.array(segment))
+            current_pos = current_pos + segment_length * direction
+            robot_positions.append(current_pos.copy())
+        
+        link2_end_idx = len(robot_positions) - 1
+        
+        # Prismatic joint (d3): Extend in the same direction
         current_pos = current_pos + d3 * direction
         robot_positions.append(current_pos.copy())
         
         d3_end_idx = len(robot_positions) - 1
         
-        # End effector: Process each segment
+        # End effector: Apply shape segments in the same direction
         for segment in self.link_params[2]:
             segment_length = np.linalg.norm(np.array(segment))
             current_pos = current_pos + segment_length * direction
@@ -1031,27 +1026,30 @@ class RRPToolbox:
         
         link1_end_idx = len(robot_positions) - 1
         
-        # Link 2: Process each segment
-        for segment in self.link_params[1]:
-            segment_vec = np.array(segment)
-            rotated_segment = Rz(th1) @ segment_vec
-            current_pos = current_pos + rotated_segment
-            robot_positions.append(current_pos.copy())
-        
-        link2_end_idx = len(robot_positions) - 1
-        
-        # Prismatic joint (d3): Extend in direction controlled by theta2
+        # Joint 2 is now at current_pos (end of Link 1, start of Link 2)
+        # Calculate the direction for Link 2, prismatic joint, and end effector
+        # This direction is controlled by theta2
         direction = np.array([
             np.sin(th2) * np.cos(th1),
             np.sin(th2) * np.sin(th1),
             np.cos(th2)
         ])
+        
+        # Link 2: Apply shape segments in the direction controlled by theta2
+        for segment in self.link_params[1]:
+            segment_length = np.linalg.norm(np.array(segment))
+            current_pos = current_pos + segment_length * direction
+            robot_positions.append(current_pos.copy())
+        
+        link2_end_idx = len(robot_positions) - 1
+        
+        # Prismatic joint (d3): Extend in the same direction
         current_pos = current_pos + d3 * direction
         robot_positions.append(current_pos.copy())
         
         d3_end_idx = len(robot_positions) - 1
         
-        # End effector: Process each segment
+        # End effector: Apply shape segments in the same direction
         for segment in self.link_params[2]:
             segment_length = np.linalg.norm(np.array(segment))
             current_pos = current_pos + segment_length * direction
@@ -1129,11 +1127,11 @@ if __name__ == "__main__":
     # Define link parameters and joint limits
     link_params = [
         [ (5, 0, 0), (0, 0, 5) ],  # Link 1
-        [(3, 0, 0)],  # Link 2
+        [(5, 0, 0)],  # Link 2
         [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (-180, 180),  # theta1 limits
+        (0, 90),  # theta1 limits
         (0, 180),    # theta2 limits
         (0, 5)       # d3 limits
     ]
@@ -1147,6 +1145,7 @@ if __name__ == "__main__":
     # print(f"Workspace contains {len(workspace)} reachable points")
     
     # Example: Visualize workspace (requires matplotlib)
+    # print(toolbox.Forward_Kinematics([180, 180, 5]))
     print("Plotting workspace...")
     toolbox.plot_workspace_3d(10,5,5)
     toolbox.interactive_plot()

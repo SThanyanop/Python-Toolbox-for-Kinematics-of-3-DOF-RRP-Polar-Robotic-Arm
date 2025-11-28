@@ -210,6 +210,7 @@ def main():
           f"d3=[{joint_limits[2][0]}, {joint_limits[2][1]}]m")
     
     print("\nFor full interactive experience, run individual demo sections!")
+    viz.plot_workspace_3d()
 
 
 if __name__ == "__main__":
