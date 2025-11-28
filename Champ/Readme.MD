@@ -7,7 +7,7 @@
   - [Installation \& Setup](#installation--setup)
   - [วิธีการใช้งานเบื้องต้น](#วิธีการใช้งานเบื้องต้น)
     - [1. Setup Toobox](#1-setup-toobox)
-    - [2. Main function](#2-main-function)
+    - [2. Basic function](#2-basic-function)
     - [3. plot workspace](#3-plot-workspace)
   - [visualization-features](#visualization-features)
     - [controller component](#controller-component)
@@ -69,7 +69,7 @@ joint_limits = [
     (3, 5)        # d3 limits (meters)
 ]
 ```
-### 2. Main function
+### 2. Basic function
 ```python
 Configuration_Space_Calculation(self, target_position, target_velocity, config=False)
 ```
