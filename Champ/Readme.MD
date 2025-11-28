@@ -77,34 +77,47 @@ toolbox.plot_workspace_3d(theta1_samples=25, theta2_samples=25, d3_samples=15)
 ```python
 toolbox.plot_workspace_3d(5, 5, 5)
 ```
+
 ![alt text](images/image.png)
+
 ```python
 toolbox.plot_workspace_3d(10, 5, 5)
 ```
+
 ![alt text](images/image-1.png)
 โดยค่าเบื้องต้นหากไม่ได้กำหนดจะอยู่ที่ (10,10,5)
 
 ## visualization-features
 ลักษณะ UI เมื่อ plot workspace เรียบร้อยแล้ว
+
 ![alt text](images/image-2.png)
+
 ### controller component
 
 #### 1. hide vertice, hide face
 ใช้ซ่อน vertex กับ face ภายในรูป render ได้
+
 ![alt text](images/image-5.png)
+
 ตัวอย่าง
+
 ![alt text](images/image-6.png)
+
 ![alt text](images/image-7.png)
 
 #### 2. slidebar
 Elevation เป็น slidebar หมุนทิศทางหันแบบ ขึ้น/ลง โดยมี limit ที่ (-90 -> 90) องศา
 Azimuth เป็น slidebar หมุนตามทิศทางแนวนอนแบบ ซ้าย/ขวา โดยมี limit ที่ (-180 -> 180) องศา
+
 ![alt text](images/image-8.png)
 
 ### visualization component
 #### 1. กราฟแบ่งสีตามความสูง
 สีภายในเส้นดังกล่าวจะเป็นสีบางบอกแกน z ของ vertex เพื่อดูระดับความลึกของแต่ละ vertex
+
 ![alt text](images/image-3.png)
+
 #### 2. คำอธิบายสัญลักษณ์
 อธิบายถึง component ที่แสดงผลอยู่มีอะไรบ้าง
+
 ![alt text](images/image-9.png)
