@@ -208,15 +208,7 @@ W = S₁ ∪ S₂ ∪ S₃
 
 ### 4.1 แผนผังระบบ (System Architecture)
 
-```
-Input Parameters → Parameter Validation → Kinematic Computation → Output & Visualization
-       ↓                    ↓                      ↓                        ↓
-  • Link Vectors       • Range Check         • Forward Kin.          • Task Space
-  • Joint Limits       • Feasibility         • Inverse Kin.          • Config Space
-  • Task Space         • Error Detection     • Jacobian Matrix       • Velocities
-  • Config Space                             • Workspace Calc.       • 3D Visualization
-  • Time Duration                            • Singularity Check     • Animation
-```
+![alt text](Img/sys_overview.png)
 
 ### 4.2 ฟังก์ชันหลักของระบบ
 
@@ -521,7 +513,9 @@ joint_velocity = (θ̇₁, θ̇₂, ḋ₃)
 
 **สัญลักษณ์ที่ใช้:**
 - cᵢ = cos(θᵢ), sᵢ = sin(θᵢ)
-- Xᵢ, Yᵢ, Zᵢ = ตำแหน่งโกลบอลของข้อต่อที่ i (Joint Global Position)
+- Xᵢ, Yᵢ, Zᵢ = ตำแหน่งโกลบอลของข้อต่อที่ i (Joint Local Position)
+
+![alt text](Img/RRP_Robot_config.jpg)
 
 **ตาราง DH Parameters ตามการ Implementation:**
 
@@ -537,9 +531,9 @@ joint_velocity = (θ̇₁, θ̇₂, ḋ₃)
 
 *หมายเหตุ:* 
 - ตัวแปรที่มีเครื่องหมาย (*) คือตัวแปรข้อต่อ
-- X₁, Y₁, Z₁ = ตำแหน่งโกลบอลของข้อต่อที่ 1
-- X₂, Y₂, Z₂ = ตำแหน่งโกลบอลของข้อต่อที่ 2
-- X₃, Y₃, Z₃ = ตำแหน่งโกลบอลของข้อต่อที่ 3
+- X₁, Y₁, Z₁ = ตำแหน่ง Local ของข้อต่อที่ 1
+- X₂, Y₂, Z₂ = ตำแหน่ง Local ของข้อต่อที่ 2
+- X₃, Y₃, Z₃ = ตำแหน่ง Local ของข้อต่อที่ 3
 
 **Transformation Matrix จากเฟรม 0 ไปเฟรม E:**
 
@@ -2760,24 +2754,82 @@ q_normal = [30, 45, 2.5]
 assert check_singularity(q_normal) == False
 ```
 
+### 11.6 Visualization Validation
+ในส่วนของ Visualization นั้นแบ่งได้เป็นสองส่วนคือ Interactive Visualization และ Trajectory Visualization ทำการ Validate เพื่อที่จะตรวจสอบความถูกต้อง
+
+#### 11.6.1 Validate Interactive Visualization
+**Hypothesis :** ลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง
+
+#### Test Case 11 : Link 1 Check
+**วัตถุประสงค์ :** ตรวจสอบว่าลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง เมื่อเทียบกับลิงค์ที่วาดมือ
+
+**Input :** 
+```
+link_1 = [(5, 0, 0), (0, 0, 5)]
+```
+
+**ผลลัพธ์ที่คาดหวัง :** Link 1 จากการ Plot โดย code มีรูปร่างและความยาวตรงกับ Link 1 จากการวาดมือ
+
+**ผลการทดสอบ :**   
+
+Link 1 จากการวาดมือ  
+![alt text](Img/Link1_Handdraw.jpg)
+
+Link 1 จากการ Plot โดย Code
+![alt text](Img/Link1%20(Small).png)
+
+**สรุปผลการทดลอง :** จากผลการทดสอบ พบว่า Link 1 จากการวาดมือ และ Link 1 จากการ Plot โดย code นั้นมีรูปแบบและความยาวเหมือนกัน ดังนั้นลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง
+
+#### 11.6.2 Validate Trajectory Visualization
+**Hypothesis :** การเคลื่อนที่ของแขนกลถูกต้อง
+
+#### Test Case 12: Trajectory Check
+**วัตถุประสงค์ :** ตรวจสอบว่าการเคลื่อนที่ของแขนกลถูกต้องตาม End Effector Path
+
+**Input :** 
+```
+position_trajectory = [
+        [3, 3, 8],
+        [3, -3, 10],
+        [-3, -3, 8],
+        [-3, 3, 10],
+        [3, 3, 8],
+    ]
+```
+
+**ผลลัพธ์ที่คาดหวัง :** การเคลื่อนที่ของแขนกลตำแหน่ง End effector ตรงกับ End Effector Path
+
+**ผลการทดสอบ :**
+
+![alt text](Img/trajec.png)
+
+
+Code ที่ทำการสร้าง End Effector Path
+```python
+ax.plot(path_points[:frame+1, 0], path_points[:frame+1, 1], path_points[:frame+1, 2], 'r--', linewidth=2, alpha=0.5, label='End Effector Path')
+ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], s=100, c='yellow', marker='*', edgecolors='black', linewidths=2, zorder=10)
+```
+**สรุปผลการทดลอง :** จากผลการทดสอบสังเกตุได้ว่าการเคลื่อนที่ของ End effector อยู่ในตำแหน่งที่ตรงกับ End Effector Path ดังนั้นแขนกลมีการเคลื่อนที่ที่ถูกต้อง
 
 
 ### 11.10 Validation Summary
 
 **Test Results Table:**
 
-| Test Case | Description | Status | Error |
-|-----------|-------------|--------|-------|
-| TC-1 | FK Home Position | PASS | < 10⁻⁶ |
-| TC-2 | FK Base Rotation |  PASS | < 10⁻⁶ |
-| TC-3 | FK Shoulder Rotation |  PASS | < 10⁻⁶ |
-| TC-4 | FK Prismatic Extension |  PASS | < 10⁻⁶ |
-| TC-5 | FK Combined Config |  PASS | < 10⁻³ |
-| TC-6 | IK Round-trip |  PASS | < 10⁻⁶ |
-| TC-7 | IK Known Position | PASS | < 10⁻⁶ |
-| TC-8 | IK Multiple Solutions | PASS | < 10⁻⁶ |
-| TC-9 | Differential Consistency |  PASS | < 10⁻⁶ |
-| TC-10 | Singularity Detection |  PASS | 100% |
+| Test Case | Description | Status |
+|-----------|-------------|--------|
+| TC-1 | FK Home Position | PASS | 
+| TC-2 | FK Base Rotation |  PASS | 
+| TC-3 | FK Shoulder Rotation |  PASS | 
+| TC-4 | FK Prismatic Extension |  PASS | 
+| TC-5 | FK Combined Config |  PASS | 
+| TC-6 | IK Round-trip |  PASS | 
+| TC-7 | IK Known Position | PASS | 
+| TC-8 | IK Multiple Solutions | PASS | 
+| TC-9 | Differential Consistency |  PASS | 
+| TC-10 | Singularity Detection |  PASS |
+| TC-11 | Interactive Visualization |  PASS |
+| TC-12 | Trajectory Visualization |  PASS |
 ระบบผ่านการทดสอบทุกกรณีตามเกณฑ์ที่กำหนด แสดงให้เห็นว่า implementation มีความถูกต้องและเชื่อถือได้สำหรับการใช้งาน
 
 ### 11.11 Summary of Validation Results
