@@ -1,0 +1,1153 @@
+"""
+RRP Robotic Arm Visualization Toolbox
+A comprehensive toolbox for simulating and visualizing an RRP (Revolute-Revolute-Prismatic) robotic arm.
+"""
+import math
+PI = math.pi
+
+class RRPToolbox:
+    
+    def __init__(self, link_params, joint_limits):
+        self.link_params  = link_params  # This will contain second Joint, third Joint and End Effector parameters
+        self.joint_limits = joint_limits # This will contain second Joint and third Joint limits
+        
+        self.joint_local_positions  = [(0, 0, 0)] # First Revolute Joiny always at origin
+        self.joint_global_positions = [(0, 0, 0)] # First Revolute Joiny always at origin
+        self.end_effector_position  = (0, 0, 0)
+        
+        self.get_position() # Calculate positions upon initialization
+        
+        print("RRP Toolbox Initialized, (Parameters order (x, y, z))")
+        print("-----------------------")
+        print("Link Parameters       :", self.link_params)
+        print("Joint Limits          :", self.joint_limits)
+        print("Joint Local Positions :", self.joint_local_positions)
+        print("Joint Global Positions:", self.joint_global_positions)
+        print("End Effector Position :", self.end_effector_position)
+        
+    def get_position(self):
+        for sub_vec in self.link_params:
+            x, y, z = 0, 0, 0
+            for pos in sub_vec:
+                x += pos[0]
+                y += pos[1]
+                z += pos[2]
+                
+            self.joint_local_positions.append((x, y, z))
+            
+            x += self.joint_global_positions[-1][0]
+            y += self.joint_global_positions[-1][1]
+            z += self.joint_global_positions[-1][2]
+            
+            self.joint_global_positions.append((x, y, z))
+        
+        self.end_effector_position = self.joint_global_positions[-1]
+        
+    def deg_to_rad(self, degrees):
+        return degrees * (PI / 180.0)
+    
+    def rad_to_deg(self, radians):
+        return radians * (180.0 / PI)
+    
+    def matrix_multiply(self, A, B):
+        result = [[0 for _ in range(len(B[0]))] for _ in range(len(A))]
+        for i in range(len(A)):
+            for j in range(len(B[0])):
+                for k in range(len(B)):
+                    result[i][j] += A[i][k] * B[k][j]
+        return result
+    
+    def DH_Martrix_Transform(self, a, alpha, d, theta):
+        theta = self.deg_to_rad(theta)
+        alpha = self.deg_to_rad(alpha)
+        
+        TX = [[1, 0, 0, a],
+              [0, math.cos(alpha), -math.sin(alpha), 0],
+                [0, math.sin(alpha),  math.cos(alpha), 0],
+                [0, 0, 0, 1]]
+        TZ = [[math.cos(theta), -math.sin(theta), 0, 0],
+              [math.sin(theta),  math.cos(theta), 0, 0],
+                [0, 0, 1, d],
+                [0, 0, 0, 1]]
+        
+        DH_matrix = self.matrix_multiply(TX, TZ)
+        
+        return DH_matrix
+    
+    def get_RRP_Tramsform_Matrix(self, joint_parameters):
+        theta1  = joint_parameters[0]
+        theta2  = joint_parameters[1]
+        d3      = joint_parameters[2]
+        
+        x1 = self.joint_local_positions[1][0]  # Link 1 x
+        y1 = self.joint_local_positions[1][1]  # Link 1 y
+        z1 = self.joint_local_positions[1][2]  # Link 1 z
+        
+        x2 = self.joint_local_positions[2][0]  # Link 2 x
+        y2 = self.joint_local_positions[2][1]  # Link 2 y
+        z2 = self.joint_local_positions[2][2]  # Link 2 z
+        
+        x3 = self.joint_local_positions[3][0]  # End Effector x
+        y3 = self.joint_local_positions[3][1]  # End Effector y
+        z3 = self.joint_local_positions[3][2]  # End Effector z
+        
+        T01 = self.DH_Martrix_Transform(0,      0,      0,   theta1)
+        T12 = self.DH_Martrix_Transform(x1,     0,     z1,        0)
+        T23 = self.DH_Martrix_Transform(0,     90,     y1,   theta2)
+        T34 = self.DH_Martrix_Transform(x2,     0,     y2,       90)
+        T45 = self.DH_Martrix_Transform(z2,    90,      0,        0)
+        T56 = self.DH_Martrix_Transform(z3,     0,  x3+d3,       90)
+        T6E = self.DH_Martrix_Transform(y3,    90,      0,       90)
+        
+        to_multiply = [T01, T12, T23, T34, T45, T56, T6E]
+        
+        for i in range(len(to_multiply)):
+            for j in range(len(to_multiply[i])):
+                for k in range(len(to_multiply[i][j])):
+                    if abs(to_multiply[i][j][k]) < 1e-10:
+                        to_multiply[i][j][k] = 0.0
+        
+        T = [[1, 0, 0, 0],
+             [0, 1, 0, 0],
+             [0, 0, 1, 0],
+             [0, 0, 0, 1]]
+        
+        for matrix in to_multiply:
+            T = self.matrix_multiply(T, matrix)
+            
+        return T
+    
+    def get_RRP_Jacobian_Matrix(self, joint_parameters):
+        theta1  = self.deg_to_rad(joint_parameters[0])
+        theta2  = self.deg_to_rad(joint_parameters[1])
+        d3      = self.deg_to_rad(joint_parameters[2])
+        
+        c1      = math.cos(theta1)
+        s1      = math.sin(theta1)
+        c2      = math.cos(theta2)
+        s2      = math.sin(theta2)
+        
+        x1 = self.joint_local_positions[1][0]  # Link 1 x
+        y1 = self.joint_local_positions[1][1]  # Link 1 y
+        z1 = self.joint_local_positions[1][2]  # Link 1 z
+        
+        x2 = self.joint_local_positions[2][0]  # Link 2 x
+        y2 = self.joint_local_positions[2][1]  # Link 2 y
+        z2 = self.joint_local_positions[2][2]  # Link 2 z
+        
+        x3 = self.joint_local_positions[3][0]  # End Effector x
+        y3 = self.joint_local_positions[3][1]  # End Effector y
+        z3 = self.joint_local_positions[3][2]  # End Effector z
+        
+        J = [[ -s1*x1 + c1*y1 + c1*y2 + c1*y3 - s1*c2*(d3+x3) - s1*c2*x2 + s1*s2*z2 + s1*s2*z3, -c1*s2*(d3+x3) - c1*s2*x2 - c1*c2*z2 - c1*c2*z3, c1*c2],
+             [  c1*x1 + s1*y1 + s1*y2 + s1*y3 - c1*c2*(d3+x3) + c1*c2*x2 - c1*s2*z2 - c1*s2*z3, -s1*s2*(d3+x3) - s1*s2*x2 - s1*c2*z2 - s1*c2*z3, s1*c2],
+             [                                                                               0,              c2*(d3+x3) - s2*z2 - s2*z3 + c2*x2,    s2],
+             [                                                                               0,                                               0,     0],
+             [                                                                               0,                                               0,     0],
+             [                                                                               1,                                               1,     0]]
+        
+        reduced_J = [J[0][:], J[1][:], J[2][:]]
+        
+        return J,reduced_J
+    
+    def Forward_Kinematics(self, joint_parameters):
+        if len(joint_parameters) != 3:
+            raise ValueError("Joint parameters must contain exactly 2 values: [theta1 ,theta2, d3]")
+        if not (self.joint_limits[0][0] <= joint_parameters[0] <= self.joint_limits[0][1]):
+            raise ValueError(f"Theta1 must be within limits: {self.joint_limits[0]}")
+        if not (self.joint_limits[1][0] <= joint_parameters[1] <= self.joint_limits[1][1]):
+            raise ValueError(f"Theta2 must be within limits: {self.joint_limits[1]}")
+        if not (self.joint_limits[2][0] <= joint_parameters[2] <= self.joint_limits[2][1]):
+            raise ValueError(f"d3 must be within limits: {self.joint_limits[2]}")
+        
+        result_matrix = self.get_RRP_Tramsform_Matrix(joint_parameters)
+        position = (result_matrix[0][3], result_matrix[1][3], result_matrix[2][3])
+        
+        return position
+    
+    def Inverse_Kinematics(self, target_position):
+        x, y, z = target_position
+        x1 = self.joint_global_positions[1][0]  # Link 1 x
+        y1 = self.joint_global_positions[1][1]  # Link 1 y
+        z1 = self.joint_global_positions[1][2]  # Link 1 z
+        
+        x2 = self.joint_global_positions[2][0]  # Link 2 x
+        y2 = self.joint_global_positions[2][1]  # Link 2 y
+        z2 = self.joint_global_positions[2][2]  # Link 2 z
+        
+        x3 = self.joint_global_positions[3][0]  # End Effector x
+        y3 = self.joint_global_positions[3][1]  # End Effector y
+        z3 = self.joint_global_positions[3][2]  # End Effector z
+        
+        
+        offest_theta1 = math.atan2(y3, x3)
+        theta1 = math.atan2(y, x) - offest_theta1
+        
+        offset_theta2 = math.atan2(z3-z1, math.sqrt((x3-x1)**2 + (y3-y1)**2))
+        theta2 = math.atan2(z - z1, math.sqrt((x - x1)**2 + (y - y1)**2)) - offset_theta2
+        
+        z1 = self.joint_local_positions[1][2]  # Link 1 z
+        z2 = self.joint_local_positions[2][2]  # Link 2 z
+        z3 = self.joint_local_positions[3][2]  # End Effector z
+        x2 = self.joint_local_positions[2][0]  # Link 2
+        x3 = self.joint_local_positions[3][0]  # End Effector
+        
+        d3 = ((z - z1 - math.cos(theta2)*z2 - math.cos(theta2)*z3 - math.sin(theta2)*x2) / math.sin(theta2)) - x3
+        
+        theta1 = self.rad_to_deg(theta1)
+        theta2 = self.rad_to_deg(theta2)
+        
+        if not (self.joint_limits[0][0] <= theta1 <= self.joint_limits[0][1]):
+            raise ValueError(f"Calculated theta1 {theta1} is out of limits: {self.joint_limits[0]}")
+        if not (self.joint_limits[1][0] <= theta2 <= self.joint_limits[1][1]):
+            raise ValueError(f"Calculated theta2 {theta2} is out of limits: {self.joint_limits[1]}")
+        if not (self.joint_limits[2][0] <= d3 <= self.joint_limits[2][1]):
+            raise ValueError(f"Calculated d3 {d3} is out of limits: {self.joint_limits[2]}")
+        
+        return (theta1, theta2, d3)
+        
+    def Differential_Forward_Kinematics(self, joint_parameters, time):
+        J, reduced_J = self.get_RRP_Jacobian_Matrix(joint_parameters)
+        
+        end_effector_velocities = [0, 0, 0]
+        
+        joint_velocities = (joint_parameters[0]/time, joint_parameters[1]/time, joint_parameters[2]/time)
+        
+        for i in range(3):
+            for j in range(3):
+                end_effector_velocities[i] += reduced_J[i][j] * joint_velocities[j]
+        
+        return tuple(end_effector_velocities)
+    
+    def Differential_Inverse_Kinematics(self, target_position, time):
+        J, reduced_J = self.get_RRP_Jacobian_Matrix((0,0,0))
+        
+        joint_velocities = [0, 0, 0]
+        
+        target_velocities = (target_position[0]/time, target_position[1]/time, target_position[2]/time)
+        
+        for i in range(3):
+            for j in range(3):
+                if reduced_J[i][j] == 0:
+                    continue
+                joint_velocities[j] += target_velocities[i] / reduced_J[i][j]
+        
+        for i in range(3):
+            joint_velocities[i] = joint_velocities[i] * time
+        
+        return tuple(joint_velocities)
+    
+    def get_workspace(self, theta1_samples=12, theta2_samples=12, d3_samples=6):
+        """
+        Generate workspace points by sampling joint parameters within their limits.
+        Only sample d3 at its boundaries (d3_min and d3_max) to show only outer surface.
+        
+        Args:
+            theta1_samples: Number of samples for theta1
+            theta2_samples: Number of samples for theta2
+            d3_samples: Not used - always samples only d3_min and d3_max
+            
+        Returns:
+            workspace_points: List of (x, y, z) positions reachable by the robot
+        """
+        workspace_points = []
+        
+        theta1_min, theta1_max = self.joint_limits[0]
+        theta2_min, theta2_max = self.joint_limits[1]
+        d3_min, d3_max = self.joint_limits[2]
+        
+        # Generate samples
+        theta1_range = [theta1_min + (theta1_max - theta1_min) * i / (theta1_samples - 1) for i in range(theta1_samples)]
+        theta2_range = [theta2_min + (theta2_max - theta2_min) * i / (theta2_samples - 1) for i in range(theta2_samples)]
+        d3_range = [d3_min, d3_max]  # Only sample boundary values
+        
+        # For each theta1, sample ALL theta2 with only d3_min and d3_max
+        for theta1 in theta1_range:
+            for theta2 in theta2_range:
+                for d3 in d3_range:
+                    # Convert to radians
+                    th1_rad = self.deg_to_rad(theta1)
+                    th2_rad = self.deg_to_rad(theta2)
+                    
+                    c1 = math.cos(th1_rad)
+                    s1 = math.sin(th1_rad)
+                    
+                    # Start from base at origin
+                    current_x, current_y, current_z = 0, 0, 0
+                    
+                    # Apply Link 1 segments (rotated by theta1 around Z)
+                    for segment in self.link_params[0]:
+                        segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
+                        rotated_x = c1 * segment_x - s1 * segment_y
+                        rotated_y = s1 * segment_x + c1 * segment_y
+                        rotated_z = segment_z
+                        
+                        current_x += rotated_x
+                        current_y += rotated_y
+                        current_z += rotated_z
+                    
+                    # Apply Link 2 segments (rotated by theta1 around Z)
+                    for segment in self.link_params[1]:
+                        segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
+                        rotated_x = c1 * segment_x - s1 * segment_y
+                        rotated_y = s1 * segment_x + c1 * segment_y
+                        rotated_z = segment_z
+                        
+                        current_x += rotated_x
+                        current_y += rotated_y
+                        current_z += rotated_z
+                    
+                    # Apply Prismatic joint (d3) with direction controlled by theta2
+                    # Direction: [sin(theta2)*cos(theta1), sin(theta2)*sin(theta1), cos(theta2)]
+                    c2 = math.cos(th2_rad)
+                    s2 = math.sin(th2_rad)
+                    
+                    prismatic_x = d3 * s2 * c1
+                    prismatic_y = d3 * s2 * s1
+                    prismatic_z = d3 * c2
+                    
+                    current_x += prismatic_x
+                    current_y += prismatic_y
+                    current_z += prismatic_z
+                    
+                    # Apply End effector segments
+                    for segment in self.link_params[2]:
+                        segment_x, segment_y, segment_z = segment
+                        # Rotate by theta1 around Z axis
+                        rotated_x = c1 * segment_x - s1 * segment_y
+                        rotated_y = s1 * segment_x + c1 * segment_y
+                        rotated_z = segment_z
+                        
+                        current_x += rotated_x
+                        current_y += rotated_y
+                        current_z += rotated_z
+                    
+                    workspace_points.append((current_x, current_y, current_z))
+        
+        return workspace_points
+    
+    def find_singularities(self, theta1_samples=20, theta2_samples=20, d3_samples=10):
+        """
+        Find singularity positions by computing Jacobian determinant.
+        Singularities occur where the Jacobian matrix is singular (determinant ≈ 0).
+        
+        Args:
+            theta1_samples: Number of samples for theta1
+            theta2_samples: Number of samples for theta2
+            d3_samples: Number of samples for d3
+            
+        Returns:
+            singularity_positions: List of (x, y, z) positions where singularities occur
+            singularity_configs: List of ([theta1, theta2, d3], position) tuples
+        """
+        import numpy as np
+        
+        singularity_positions = []
+        singularity_configs = []
+        singularity_threshold = 1e-3  # Threshold for determinant to be considered singular
+        
+        theta1_min, theta1_max = self.joint_limits[0]
+        theta2_min, theta2_max = self.joint_limits[1]
+        d3_min, d3_max = self.joint_limits[2]
+        
+        # Generate samples
+        def linspace(start, end, samples):
+            if samples == 1:
+                return [start]
+            return [start + (end - start) * i / (samples - 1) for i in range(samples)]
+
+        theta1_range = linspace(theta1_min, theta1_max, theta1_samples)
+        theta2_range = linspace(theta2_min, theta2_max, theta2_samples)
+        d3_range     = linspace(d3_min,     d3_max,     d3_samples)
+
+        
+        for theta1 in theta1_range:
+            for theta2 in theta2_range:
+                for d3 in d3_range:
+                    try:
+                        # Get the reduced Jacobian (3x3)
+                        J, reduced_J = self.get_RRP_Jacobian_Matrix([theta1, theta2, d3])
+                        
+                        # Compute determinant
+                        J_array = np.array(reduced_J)
+                        det = np.linalg.det(J_array)
+                        
+                        # Check if singular
+                        if abs(det) < singularity_threshold:
+                            position = self.Forward_Kinematics([theta1, theta2, d3])
+                            singularity_positions.append(position)
+                            singularity_configs.append(([theta1, theta2, d3], position))
+                    except:
+                        # Skip invalid configurations
+                        pass
+        
+        return singularity_positions, singularity_configs
+    
+    def interactive_plot(self):
+        """
+        Create interactive plot with sliders for joint control.
+        Allows real-time manipulation of joint angles and prismatic extension.
+        """
+        try:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D
+            from matplotlib.widgets import Slider
+            import numpy as np
+        except ImportError as e:
+            print(f"Required libraries missing: {e}")
+            return
+        
+        fig = plt.figure(figsize=(12, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        plt.subplots_adjust(bottom=0.25)
+        
+        # Initial configuration
+        q1_min, q1_max = self.joint_limits[0]
+        q2_min, q2_max = self.joint_limits[1]
+        d3_min, d3_max = self.joint_limits[2]
+        
+        theta1_init = (q1_min + q1_max) / 2
+        theta2_init = (q2_min + q2_max) / 2
+        d3_init = (d3_min + d3_max) / 2
+        
+        # Create sliders
+        ax_theta1 = plt.axes([0.15, 0.15, 0.65, 0.03])
+        ax_theta2 = plt.axes([0.15, 0.10, 0.65, 0.03])
+        ax_d3 = plt.axes([0.15, 0.05, 0.65, 0.03])
+        
+        slider_theta1 = Slider(ax_theta1, 'θ1 (°)', q1_min, q1_max, 
+                              valinit=theta1_init, valstep=1)
+        slider_theta2 = Slider(ax_theta2, 'θ2 (°)', q2_min, q2_max, 
+                              valinit=theta2_init, valstep=1)
+        slider_d3 = Slider(ax_d3, 'd3 (m)', d3_min, d3_max, 
+                          valinit=d3_init, valstep=0.05)
+        
+        def update(val):
+            ax.cla()
+            theta1 = slider_theta1.val
+            theta2 = slider_theta2.val
+            d3 = slider_d3.val
+            try:
+                self._plot_robot_arm(theta1, theta2, d3, ax=ax)
+                fig.canvas.draw_idle()
+            except Exception as e:
+                print(f"Error updating plot: {e}")
+        
+        slider_theta1.on_changed(update)
+        slider_theta2.on_changed(update)
+        slider_d3.on_changed(update)
+        
+        # Initial plot
+        self._plot_robot_arm(theta1_init, theta2_init, d3_init, ax=ax)
+        plt.show()
+    
+    def interpolate_trajectory(self, waypoints, total_time, fps=30):
+        """
+        Generate smooth trajectory with time-based interpolation.
+        
+        Args:
+            waypoints: List of (theta1, theta2, d3) tuples
+            total_time: Total time (in seconds) to complete the entire trajectory
+            fps: Frames per second for animation (default: 30)
+        
+        Returns:
+            Tuple of (trajectory, time_stamps) where trajectory is list of joint configs
+        """
+        import numpy as np
+        
+        # Generate evenly spaced time stamps for each waypoint
+        num_waypoints = len(waypoints)
+        times = np.linspace(0, total_time, num_waypoints)
+        
+        trajectory = []
+        time_stamps = []
+        
+        for i in range(len(waypoints) - 1):
+            start = waypoints[i]
+            end = waypoints[i + 1]
+            t_start = times[i]
+            t_end = times[i + 1]
+            duration = t_end - t_start
+            
+            if duration <= 0:
+                continue
+            
+            # Calculate number of frames for this segment
+            num_frames = int(duration * fps)
+            
+            # Linear interpolation between waypoints
+            for j in range(num_frames):
+                alpha = j / num_frames
+                interpolated = tuple(
+                    start[k] + alpha * (end[k] - start[k]) 
+                    for k in range(len(start))
+                )
+                trajectory.append(interpolated)
+                time_stamps.append(t_start + alpha * duration)
+        
+        # Add final waypoint
+        trajectory.append(waypoints[-1])
+        time_stamps.append(times[-1])
+        
+        return trajectory, time_stamps
+    
+    def animate_trajectory(self, waypoints, total_time=None, fps=30):
+        """
+        Animate robot following a trajectory with time-based control and rotation.
+        
+        Args:
+            waypoints: List of (theta1, theta2, d3) joint configurations
+            total_time: Total time (in seconds) to complete the trajectory. If None, uses 1 second per waypoint
+            fps: Frames per second for animation
+        """
+        try:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D
+            from matplotlib.animation import FuncAnimation
+            import numpy as np
+        except ImportError as e:
+            print(f"Required libraries missing: {e}")
+            return
+        
+        # Generate default time if not provided
+        if total_time is None:
+            total_time = len(waypoints)  # 1 second per waypoint by default
+        
+        # Interpolate trajectory
+        joint_trajectory, time_stamps = self.interpolate_trajectory(waypoints, total_time, fps)
+        
+        # Calculate actual end effector positions
+        actual_ee_path = []
+        for joint_config in joint_trajectory:
+            theta1, theta2, d3 = joint_config
+            T = self.get_RRP_Tramsform_Matrix(joint_config)
+            ee_pos = np.array([T[0][3], T[1][3], T[2][3]])
+            actual_ee_path.append(ee_pos)
+        path_points = np.array(actual_ee_path)
+        
+        fig = plt.figure(figsize=(12, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        # Track rotation state for interactive rotation
+        rotation_state = {'azim': 45, 'elev': 20}
+        
+        def on_scroll(event):
+            """Enable mouse scroll to rotate view"""
+            if event.inaxes != ax:
+                return
+            
+            # Get current view angles
+            current_elev = ax.elev
+            current_azim = ax.azim
+            
+            # Adjust based on scroll direction (up/down)
+            if event.button == 'up':
+                rotation_state['azim'] = (current_azim + 5) % 360
+            elif event.button == 'down':
+                rotation_state['azim'] = (current_azim - 5) % 360
+            
+            ax.view_init(elev=rotation_state['elev'], azim=rotation_state['azim'])
+            fig.canvas.draw_idle()
+        
+        fig.canvas.mpl_connect('scroll_event', on_scroll)
+        
+        def update_frame(frame):
+            ax.cla()
+            theta1, theta2, d3 = joint_trajectory[frame]
+            
+            self._plot_robot_arm(theta1, theta2, d3, ax=ax)
+            
+            # Plot the actual end effector path
+            ax.plot(path_points[:frame+1, 0], path_points[:frame+1, 1], 
+                   path_points[:frame+1, 2], 'r--', linewidth=2, 
+                   alpha=0.5, label='End Effector Path')
+            ax.scatter(path_points[frame, 0], path_points[frame, 1], 
+                      path_points[frame, 2], s=100, c='yellow', marker='*', 
+                      label='Current EE Position', zorder=5)
+            
+            current_time = time_stamps[frame]
+            total_time_display = time_stamps[-1]
+            
+            ax.set_title(f'Trajectory Animation\n' + 
+                        f'Time: {current_time:.2f}s / {total_time_display:.2f}s\n' +
+                        f'θ1={theta1:.1f}°, θ2={theta2:.1f}°, d3={d3:.2f}\n' +
+                        f'End Effector: [{path_points[frame, 0]:.2f}, {path_points[frame, 1]:.2f}, {path_points[frame, 2]:.2f}]',
+                        fontsize=10)
+            
+            # Restore rotation angle
+            ax.view_init(elev=rotation_state['elev'], azim=rotation_state['azim'])
+            ax.legend(loc='upper right', fontsize=9)
+        
+        interval = 1000 / fps  # Convert fps to milliseconds per frame
+        anim = FuncAnimation(fig, update_frame, frames=len(joint_trajectory), 
+                           interval=interval, repeat=True)
+        
+        plt.tight_layout()
+        plt.show()
+        return anim
+    
+    def _plot_robot_arm(self, theta1, theta2, d3, ax=None, show_labels=True):
+        """
+        Internal method to plot robot arm for a given configuration.
+        
+        Args:
+            theta1, theta2, d3: Joint configuration
+            ax: Matplotlib 3D axis (creates new if None)
+            show_labels: Whether to show axis labels and legend
+        """
+        import numpy as np
+        
+        if ax is None:
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+        
+        # Convert to radians
+        th1 = np.radians(theta1)
+        th2 = np.radians(theta2)
+        
+        # Build robot arm path by tracing through link segments
+        robot_positions = [np.array([0, 0, 0])]  # Start at base
+        current_pos = np.array([0, 0, 0])
+        
+        # Helper function for rotation around z-axis
+        def Rz(angle):
+            c, s = np.cos(angle), np.sin(angle)
+            return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+        
+        # Link 1: Process each segment
+        for segment in self.link_params[0]:
+            segment_vec = np.array(segment)
+            rotated_segment = Rz(th1) @ segment_vec
+            current_pos = current_pos + rotated_segment
+            robot_positions.append(current_pos.copy())
+        
+        link1_end_idx = len(robot_positions) - 1
+        
+        # Link 2: Process each segment
+        for segment in self.link_params[1]:
+            segment_vec = np.array(segment)
+            rotated_segment = Rz(th1) @ segment_vec
+            current_pos = current_pos + rotated_segment
+            robot_positions.append(current_pos.copy())
+        
+        link2_end_idx = len(robot_positions) - 1
+        
+        # Prismatic joint (d3): Extend in direction controlled by theta2
+        direction = np.array([
+            np.sin(th2) * np.cos(th1),
+            np.sin(th2) * np.sin(th1),
+            np.cos(th2)
+        ])
+        current_pos = current_pos + d3 * direction
+        robot_positions.append(current_pos.copy())
+        
+        d3_end_idx = len(robot_positions) - 1
+        
+        # End effector: Process each segment
+        for segment in self.link_params[2]:
+            segment_length = np.linalg.norm(np.array(segment))
+            current_pos = current_pos + segment_length * direction
+            robot_positions.append(current_pos.copy())
+        
+        robot_array = np.array(robot_positions)
+        
+        # Plot Link 1
+        link1_positions = robot_array[:link1_end_idx + 1]
+        ax.plot3D(link1_positions[:, 0], link1_positions[:, 1], link1_positions[:, 2], 
+                 'o-', linewidth=3, markersize=8, color='steelblue', label='Link 1')
+        
+        # Plot Link 2
+        link2_positions = robot_array[link1_end_idx:link2_end_idx + 1]
+        ax.plot3D(link2_positions[:, 0], link2_positions[:, 1], link2_positions[:, 2], 
+                 'o-', linewidth=3, markersize=8, color='coral', label='Link 2')
+        
+        # Plot Prismatic Joint (d3)
+        d3_positions = robot_array[link2_end_idx:d3_end_idx + 1]
+        ax.plot3D(d3_positions[:, 0], d3_positions[:, 1], d3_positions[:, 2], 
+                 'o-', linewidth=4, markersize=8, color='green', label='Prismatic (d3)')
+        
+        # Plot End Effector
+        if len(self.link_params[2]) > 0:
+            ee_positions = robot_array[d3_end_idx:]
+            ax.plot3D(ee_positions[:, 0], ee_positions[:, 1], ee_positions[:, 2], 
+                     's-', linewidth=2, markersize=10, color='red', label='End Effector')
+        
+        # Plot base joint
+        ax.scatter(robot_array[0, 0], robot_array[0, 1], robot_array[0, 2], 
+                  c='green', s=150, marker='s', label='Base', zorder=5)
+        
+        # Calculate reach for axis limits
+        max_reach = 0
+        for pos in robot_array:
+            reach = np.linalg.norm(pos)
+            if reach > max_reach:
+                max_reach = reach
+        
+        max_reach += 1  # Add margin
+        
+        ax.set_xlim([-max_reach, max_reach])
+        ax.set_ylim([-max_reach, max_reach])
+        ax.set_zlim([0, max_reach * 1.5])
+        
+        if show_labels:
+            ax.set_xlabel('X (m)', fontsize=10)
+            ax.set_ylabel('Y (m)', fontsize=10)
+            ax.set_zlabel('Z (m)', fontsize=10)
+            ax.set_title(f'RRP Robot Configuration\nθ1={theta1:.1f}°, θ2={theta2:.1f}°, d3={d3:.2f}', 
+                        fontsize=12)
+            ax.legend(loc='upper right')
+            ax.grid(True, alpha=0.3)
+        
+        ax.view_init(elev=20, azim=45)
+        
+        return ax
+    
+    def plot_workspace_3d(self, theta1_samples=25, theta2_samples=25, d3_samples=15):
+        """
+        Plot the robot workspace in 3D using matplotlib with convex hull.
+        Shows the edge/boundary, robot links, joints, end effector, and singularities.
+        Includes singularities in the convex hull calculation for complete boundary coverage.
+        
+        Args:
+            theta1_samples: Number of samples for theta1
+            theta2_samples: Number of samples for theta2
+            d3_samples: Number of samples for d3
+        """
+        try:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D
+            from scipy.spatial import ConvexHull
+            import numpy as np
+        except ImportError as e:
+            print(f"Required libraries missing: {e}")
+            print("Install them using: pip install matplotlib scipy numpy")
+            return
+        
+        workspace_points = self.get_workspace(theta1_samples, theta2_samples, d3_samples)
+        
+        if not workspace_points:
+            print("No valid workspace points generated.")
+            return
+        
+        # Find singularities and add them to workspace points
+        print("Finding singularities...")
+        singularity_positions, singularity_configs = self.find_singularities(
+            theta1_samples=max(8, theta1_samples//2), 
+            theta2_samples=max(8, theta2_samples//2), 
+            d3_samples=max(5, d3_samples//2)
+        )
+        print(f"Found {len(singularity_positions)} singularity positions")
+        
+        # Combine workspace points with singularities for complete hull
+        # COMMENTED OUT: Testing workspace without singularities
+        all_points = workspace_points + singularity_positions
+        # all_points = workspace_points
+        
+        if len(all_points) < 4:
+            print("Not enough points to compute convex hull (need at least 4).")
+            return
+        
+        # Convert to numpy array
+        points = np.array(all_points)
+        
+        # Compute convex hull (or skip if degenerate)
+        hull = None
+        try:
+            hull = ConvexHull(points)
+        except Exception as e:
+            print(f"Could not compute 3D convex hull: {e}")
+            print(f"Points shape: {points.shape} - this may be a 2D cross-section")
+            # For 2D cases, we'll still plot but without convex hull faces
+        
+        # Create 3D plot
+        fig = plt.figure(figsize=(16, 11))
+        
+        # Main plot area
+        ax = fig.add_subplot(111, projection='3d')
+        
+        # Slider axes
+        ax_elev = fig.add_axes([0.2, 0.05, 0.3, 0.03])
+        ax_azim = fig.add_axes([0.2, 0.01, 0.3, 0.03])
+        ax_toggle_vertices = fig.add_axes([0.65, 0.05, 0.15, 0.03])
+        ax_toggle_faces = fig.add_axes([0.65, 0.01, 0.15, 0.03])
+        
+        from matplotlib.widgets import Slider, Button
+        
+        # Create sliders
+        slider_elev = Slider(ax_elev, 'Elevation', -90, 90, valinit=0, color='orange')
+        slider_azim = Slider(ax_azim, 'Azimuth', -180, 180, valinit=0, color='cyan')
+        
+        # Create toggle buttons for vertices and faces
+        btn_toggle_vertices = Button(ax_toggle_vertices, 'Hide Vertices', color='lightgray', hovercolor='0.975')
+        btn_toggle_faces = Button(ax_toggle_faces, 'Hide Faces', color='lightgray', hovercolor='0.975')
+        
+        # State for toggles
+        toggle_state = {'vertices_visible': True, 'faces_visible': True}
+        vertex_scatter = None
+        face_collections = []
+        
+        def update_view(val):
+            """Update the 3D view based on slider values"""
+            ax.view_init(elev=slider_elev.val, azim=slider_azim.val)
+            fig.canvas.draw_idle()
+        
+        def toggle_vertices(event):
+            """Toggle vertex visibility"""
+            toggle_state['vertices_visible'] = not toggle_state['vertices_visible']
+            if vertex_scatter is not None:
+                vertex_scatter.set_visible(toggle_state['vertices_visible'])
+            btn_toggle_vertices.label.set_text('Hide Vertices' if toggle_state['vertices_visible'] else 'Show Vertices')
+            fig.canvas.draw_idle()
+        
+        def toggle_faces(event):
+            """Toggle face visibility"""
+            toggle_state['faces_visible'] = not toggle_state['faces_visible']
+            for face_coll in face_collections:
+                face_coll.set_visible(toggle_state['faces_visible'])
+            btn_toggle_faces.label.set_text('Hide Faces' if toggle_state['faces_visible'] else 'Show Faces')
+            fig.canvas.draw_idle()
+        
+        slider_elev.on_changed(update_view)
+        slider_azim.on_changed(update_view)
+        btn_toggle_vertices.on_clicked(toggle_vertices)
+        btn_toggle_faces.on_clicked(toggle_faces)
+        
+        # Set initial camera view to elevation=0, azimuth=0
+        slider_elev.set_val(0)
+        slider_azim.set_val(0)
+        
+        # Plot the convex hull surface with transparent face colors (hollow - no top/bottom caps)
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
+        if hull is not None:
+            # Skip plotting convex hull faces - we'll use custom boundary faces instead
+            # (commented out to avoid overlapping with boundary face toggle)
+            pass
+        else:
+            # For 2D cases, we'll still plot but without convex hull faces
+            print("Using 2D cross-section visualization (no 3D hull)")
+        
+        # Convert workspace points to array first
+        ws_array = np.array(workspace_points)
+        
+        # Connect workspace grid points with edges
+        # Group points by (theta1, theta2) and connect d3 values
+        theta1_min, theta1_max = self.joint_limits[0]
+        theta2_min, theta2_max = self.joint_limits[1]
+        d3_min, d3_max = self.joint_limits[2]
+        
+        theta1_range = [theta1_min + (theta1_max - theta1_min) * i / (theta1_samples - 1) for i in range(theta1_samples)]
+        theta2_range = [theta2_min + (theta2_max - theta2_min) * i / (theta2_samples - 1) for i in range(theta2_samples)]
+        
+        # Build a dictionary to map (theta1_idx, theta2_idx, d3_idx) to point index
+        point_idx = 0
+        point_map = {}
+        for i in range(theta1_samples):
+            for j in range(len(theta2_range)):
+                for d3_idx in range(2):  # 0 for d3_min, 1 for d3_max
+                    point_map[(i, j, d3_idx)] = point_idx
+                    point_idx += 1
+        
+        # Connect edges along d3 direction (within same theta1, theta2)
+        # Only connect d3_min to d3_max at theta2 boundaries (theta2_min and theta2_max)
+        for i in range(theta1_samples):
+            for j in range(len(theta2_range)):
+                # Check if this is a boundary theta2
+                is_theta2_boundary = (j == 0 or j == len(theta2_range) - 1)
+                
+                idx_min = point_map.get((i, j, 0))
+                idx_max = point_map.get((i, j, 1))
+                
+                if idx_min is not None and idx_max is not None and idx_min < len(ws_array) and idx_max < len(ws_array):
+                    # Only draw d3 connection if at theta2 boundary
+                    if is_theta2_boundary:
+                        p_min = ws_array[idx_min]
+                        p_max = ws_array[idx_max]
+                        ax.plot3D([p_min[0], p_max[0]], [p_min[1], p_max[1]], [p_min[2], p_max[2]], 
+                                 'b-', linewidth=1, alpha=0.5)
+        
+        # Also connect edges along d3 direction at theta1 boundaries (theta1_min and theta1_max)
+        for i in [0, theta1_samples - 1]:
+            for j in range(len(theta2_range)):
+                idx_min = point_map.get((i, j, 0))
+                idx_max = point_map.get((i, j, 1))
+                
+                if idx_min is not None and idx_max is not None and idx_min < len(ws_array) and idx_max < len(ws_array):
+                    p_min = ws_array[idx_min]
+                    p_max = ws_array[idx_max]
+                    ax.plot3D([p_min[0], p_max[0]], [p_min[1], p_max[1]], [p_min[2], p_max[2]], 
+                             'b-', linewidth=1, alpha=0.5)
+        
+        # Connect edges along theta2 direction (within same theta1, d3)
+        # Draw at all theta1 values to fully connect the structure
+        for i in range(theta1_samples):
+            for d3_idx in range(2):
+                for j in range(len(theta2_range) - 1):
+                    idx_curr = point_map.get((i, j, d3_idx))
+                    idx_next = point_map.get((i, j + 1, d3_idx))
+                    
+                    if idx_curr is not None and idx_next is not None and idx_curr < len(ws_array) and idx_next < len(ws_array):
+                        p_curr = ws_array[idx_curr]
+                        p_next = ws_array[idx_next]
+                        ax.plot3D([p_curr[0], p_next[0]], [p_curr[1], p_next[1]], [p_curr[2], p_next[2]], 
+                                 'b-', linewidth=1, alpha=0.5)
+        
+        # Connect edges along theta1 direction (within same theta2, d3)
+        # Draw at all theta2 values to fully connect the structure
+        for j in range(len(theta2_range)):
+            for d3_idx in range(2):
+                for i in range(theta1_samples - 1):
+                    idx_curr = point_map.get((i, j, d3_idx))
+                    idx_next = point_map.get((i + 1, j, d3_idx))
+                    
+                    if idx_curr is not None and idx_next is not None and idx_curr < len(ws_array) and idx_next < len(ws_array):
+                        p_curr = ws_array[idx_curr]
+                        p_next = ws_array[idx_next]
+                        ax.plot3D([p_curr[0], p_next[0]], [p_curr[1], p_next[1]], [p_curr[2], p_next[2]], 
+                                 'b-', linewidth=1, alpha=0.5)
+        
+        # Create faces from connected edges (avoid duplicates by tracking processed faces)
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
+        faces = []
+        face_set = set()  # Track processed faces to avoid duplicates
+        
+        # Create faces in theta2 direction (rectangular faces in theta1-theta2 plane)
+        for i in range(theta1_samples - 1):
+            for d3_idx in range(2):
+                for j in range(len(theta2_range) - 1):
+                    idx1 = point_map.get((i, j, d3_idx))
+                    idx2 = point_map.get((i + 1, j, d3_idx))
+                    idx3 = point_map.get((i + 1, j + 1, d3_idx))
+                    idx4 = point_map.get((i, j + 1, d3_idx))
+                    
+                    if all(idx is not None and idx < len(ws_array) for idx in [idx1, idx2, idx3, idx4]):
+                        # Create face as sorted tuple to avoid duplicates
+                        face_key = tuple(sorted([idx1, idx2, idx3, idx4]))
+                        if face_key not in face_set:
+                            face_set.add(face_key)
+                            p1 = ws_array[idx1]
+                            p2 = ws_array[idx2]
+                            p3 = ws_array[idx3]
+                            p4 = ws_array[idx4]
+                            faces.append([p1, p2, p3, p4])
+        
+        # Create faces in theta1 direction at theta2 boundaries (rectangular faces)
+        for j in [0, len(theta2_range) - 1]:
+            for i in range(theta1_samples - 1):
+                idx1 = point_map.get((i, j, 0))
+                idx2 = point_map.get((i + 1, j, 0))
+                idx3 = point_map.get((i + 1, j, 1))
+                idx4 = point_map.get((i, j, 1))
+                
+                if all(idx is not None and idx < len(ws_array) for idx in [idx1, idx2, idx3, idx4]):
+                    face_key = tuple(sorted([idx1, idx2, idx3, idx4]))
+                    if face_key not in face_set:
+                        face_set.add(face_key)
+                        p1 = ws_array[idx1]
+                        p2 = ws_array[idx2]
+                        p3 = ws_array[idx3]
+                        p4 = ws_array[idx4]
+                        faces.append([p1, p2, p3, p4])
+        
+        # Create faces in d3 direction at theta1 boundaries (rectangular faces)
+        for i in [0, theta1_samples - 1]:
+            for j in range(len(theta2_range) - 1):
+                idx1 = point_map.get((i, j, 0))
+                idx2 = point_map.get((i, j + 1, 0))
+                idx3 = point_map.get((i, j + 1, 1))
+                idx4 = point_map.get((i, j, 1))
+                
+                if all(idx is not None and idx < len(ws_array) for idx in [idx1, idx2, idx3, idx4]):
+                    face_key = tuple(sorted([idx1, idx2, idx3, idx4]))
+                    if face_key not in face_set:
+                        face_set.add(face_key)
+                        p1 = ws_array[idx1]
+                        p2 = ws_array[idx2]
+                        p3 = ws_array[idx3]
+                        p4 = ws_array[idx4]
+                        faces.append([p1, p2, p3, p4])
+        
+        # Plot faces with transparency
+        if faces:
+            face_collection = Poly3DCollection(faces, alpha=0.25, facecolor='cyan', edgecolor='none')
+            face_collection.set_visible(toggle_state['faces_visible'])  # Initially hidden
+            ax.add_collection3d(face_collection)
+            face_collections.append(face_collection)  # Store for toggle button
+        
+        # Plot all workspace points - these are the actual grid vertices
+        z_values_ws = ws_array[:, 2]  # Get Z coordinates of workspace points
+        vertex_scatter = ax.scatter(ws_array[:, 0], 
+                            ws_array[:, 1], 
+                            ws_array[:, 2],
+                            c=z_values_ws, cmap='viridis', marker='o', s=40, alpha=0.8, 
+                            label='Workspace Grid Vertices', edgecolors='black', linewidth=0.5)
+        
+        # Add colorbar to show Z-axis scale
+        cbar = plt.colorbar(vertex_scatter, ax=ax, pad=0.1, shrink=0.8)
+        cbar.set_label('Height (Z-axis)', rotation=270, labelpad=15)
+        
+        # Plot singularity positions (highlighted)
+        if singularity_positions:
+            sing_array = np.array(singularity_positions)
+            ax.scatter(sing_array[:, 0], 
+                      sing_array[:, 1], 
+                      sing_array[:, 2],
+                      c='purple', marker='X', s=200, alpha=0.9, 
+                      label=f'Singularities ({len(singularity_positions)})', 
+                      edgecolors='black', linewidth=1.5)
+        
+        # Plot robot configuration at a specific joint angle
+        # joint_params = [(self.joint_limits[0][0]+self.joint_limits[0][1])/2, (self.joint_limits[1][0]+self.joint_limits[1][1])/2, (self.joint_limits[2][0]+self.joint_limits[2][1])/2]  # Sample configuration
+        # joint_params = [self.joint_limits[0][0], self.joint_limits[1][0], self.joint_limits[2][0]]  # Min configuration
+        joint_params = [self.joint_limits[0][0], self.joint_limits[1][0], self.joint_limits[2][1]]
+        
+        # Compute forward kinematics to get all link positions
+        theta1 = joint_params[0]
+        theta2 = joint_params[1]
+        d3 = joint_params[2]
+        
+        # Convert to radians
+        th1 = np.radians(theta1)
+        th2 = np.radians(theta2)
+        
+        # Build robot arm path by tracing through link segments
+        robot_positions = [np.array([0, 0, 0])]  # Start at base
+        current_pos = np.array([0, 0, 0])
+        
+        # Helper function for rotation around z-axis
+        def Rz(angle):
+            c, s = np.cos(angle), np.sin(angle)
+            return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+        
+        # Link 1: Process each segment
+        for segment in self.link_params[0]:
+            segment_vec = np.array(segment)
+            rotated_segment = Rz(th1) @ segment_vec
+            current_pos = current_pos + rotated_segment
+            robot_positions.append(current_pos.copy())
+        
+        link1_end_idx = len(robot_positions) - 1
+        
+        # Link 2: Process each segment
+        for segment in self.link_params[1]:
+            segment_vec = np.array(segment)
+            rotated_segment = Rz(th1) @ segment_vec
+            current_pos = current_pos + rotated_segment
+            robot_positions.append(current_pos.copy())
+        
+        link2_end_idx = len(robot_positions) - 1
+        
+        # Prismatic joint (d3): Extend in direction controlled by theta2
+        direction = np.array([
+            np.sin(th2) * np.cos(th1),
+            np.sin(th2) * np.sin(th1),
+            np.cos(th2)
+        ])
+        current_pos = current_pos + d3 * direction
+        robot_positions.append(current_pos.copy())
+        
+        d3_end_idx = len(robot_positions) - 1
+        
+        # End effector: Process each segment
+        for segment in self.link_params[2]:
+            segment_length = np.linalg.norm(np.array(segment))
+            current_pos = current_pos + segment_length * direction
+            robot_positions.append(current_pos.copy())
+        
+        robot_array = np.array(robot_positions)
+        
+        # Plot Link 1
+        link1_positions = robot_array[:link1_end_idx + 1]
+        ax.plot3D(link1_positions[:, 0], link1_positions[:, 1], link1_positions[:, 2], 
+                 'o-', linewidth=3, markersize=8, color='steelblue', label='Link 1')
+        
+        # Plot Link 2
+        link2_positions = robot_array[link1_end_idx:link2_end_idx + 1]
+        ax.plot3D(link2_positions[:, 0], link2_positions[:, 1], link2_positions[:, 2], 
+                 'o-', linewidth=3, markersize=8, color='coral', label='Link 2')
+        
+        # Plot Prismatic Joint (d3)
+        d3_positions = robot_array[link2_end_idx:d3_end_idx + 1]
+        ax.plot3D(d3_positions[:, 0], d3_positions[:, 1], d3_positions[:, 2], 
+                 'o-', linewidth=4, markersize=8, color='green', label='Prismatic (d3)')
+        
+        # Plot End Effector
+        if len(self.link_params[2]) > 0:
+            ee_positions = robot_array[d3_end_idx:]
+            ax.plot3D(ee_positions[:, 0], ee_positions[:, 1], ee_positions[:, 2], 
+                     's-', linewidth=2, markersize=10, color='red', label='End Effector')
+        
+        # Plot base joint
+        ax.scatter(robot_array[0, 0], robot_array[0, 1], robot_array[0, 2], 
+                  c='green', s=150, marker='s', label='Base', zorder=5)
+        
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        
+        # Set equal axis lengths to fit from base (0,0,0) to farthest end effector
+        x_max = max(abs(points[:, 0].min()), abs(points[:, 0].max()))
+        y_max = max(abs(points[:, 1].min()), abs(points[:, 1].max()))
+        z_max = max(abs(points[:, 2].min()), abs(points[:, 2].max()))
+        
+        # Use the maximum distance from origin
+        max_distance = max(x_max, y_max, z_max)
+        
+        # Add small margin
+        margin = max_distance * 0.1
+        axis_limit = max_distance + margin
+        
+        # Center on origin (base position at 0,0,0)
+        ax.set_xlim(-axis_limit, axis_limit)
+        ax.set_ylim(-axis_limit, axis_limit)
+        ax.set_zlim(-axis_limit, axis_limit)
+        
+        # Create title with joint limits information
+        q1_min, q1_max = self.joint_limits[0]
+        q2_min, q2_max = self.joint_limits[1]
+        d3_min, d3_max = self.joint_limits[2]
+        
+        title_text = f'RRP Robot Workspace with Singularities (Interactive)\n'
+        title_text += f'Configuration: θ1={joint_params[0]:.1f}°, θ2={joint_params[1]:.1f}°, d3={joint_params[2]:.1f}\n'
+        title_text += f'Limits - θ1: [{q1_min:.1f}°, {q1_max:.1f}°], θ2: [{q2_min:.1f}°, {q2_max:.1f}°], d3: [{d3_min:.1f}, {d3_max:.1f}]'
+        
+        ax.set_title(title_text, fontsize=10)
+        ax.legend(loc='upper left', fontsize=9)
+        
+        # Set initial view
+        ax.view_init(elev=20, azim=45)
+        
+        plt.tight_layout(rect=[0, 0.08, 1, 1])
+        plt.show()
+
+
+# Example usage of RRPToolbox
+if __name__ == "__main__":
+    # Define link parameters and joint limits
+    link_params = [
+        [ (5, 0, 0), (0, 0, 5) ],  # Link 1
+        [(3, 0, 0)],  # Link 2
+        [(0, 0, 0)]   # End Effector
+    ]
+    joint_limits = [
+        (0, 90),  # theta1 limits
+        (0, 180),    # theta2 limits
+        (3, 5)       # d3 limits
+    ]
+    
+    # Create an instance
+    toolbox = RRPToolbox(link_params, joint_limits)
+
+    # Example: Get workspace points
+    # print("\nGenerating workspace...")
+    # workspace = toolbox.get_workspace(theta1_samples=10, theta2_samples=10, d3_samples=5)
+    # print(f"Workspace contains {len(workspace)} reachable points")
+    
+    # Example: Visualize workspace (requires matplotlib)
+    print("Plotting workspace...")
+    toolbox.plot_workspace_3d(10,10,5)
+    toolbox.interactive_plot()
+
