@@ -99,3 +99,7 @@ robot.animate_trajectory(
 
 ![alt text](Img/slidebar.png)
 
+### 4. Visual Space
+พื้นที่แสดงการทำงานของแขนกล
+
+![alt text](Img/plot%20space.png)
