@@ -1,7 +1,7 @@
-# การใช้งาน 3D workspace และ 3D Visualization เบื้องต้น
+# การใช้งาน 3D workspace และ 3D Visualization ของ 3-DOF (RRP) Polar Robotic Arm
 ## Table of Contents
 
-- [การใช้งาน 3D workspace และ 3D Visualization เบื้องต้น](#การใช้งาน-3d-workspace-และ-3d-visualization-เบื้องต้น)
+- [การใช้งาน 3D workspace และ 3D Visualization ของ 3-DOF (RRP) Polar Robotic Arm](#การใช้งาน-3d-workspace-และ-3d-visualization-ของ-3-dof-rrp-polar-robotic-arm)
   - [Table of Contents](#table-of-contents)
   - [หลักการคณิตศาสตร์ในการ Plot Workspace 3D](#หลักการคณิตศาสตร์ในการ-plot-workspace-3d)
   - [Installation \& Setup](#installation--setup)
