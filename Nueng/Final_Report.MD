@@ -5,8 +5,7 @@
 - ศักดิ์ไชย ธนภาสวัฒน์ (66340500052)
 - ธัญนพ ศรีวานิช (66340500073)
 
-**Institution:** Institute of Field Robotics, King Mongkut's University of Technology Thonburi  
-**Program:** Senior Thesis FRAB (FIBO Robotics and Automation: Bachelor)  
+**Institution:** Institute of Field Robotics, King Mongkut's University of Technology Thonburi   
 **Academic Year:** 2025
 
 ---
@@ -2847,7 +2846,6 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 | TC-11 | Interactive Visualization |  PASS |
 | TC-12 | Trajectory Visualization |  PASS |
 | TC-13 | 3D Workspace |  FAIL |
-ระบบผ่านการทดสอบทุกกรณีตามเกณฑ์ที่กำหนด แสดงให้เห็นว่า implementation มีความถูกต้องและเชื่อถือได้สำหรับการใช้งาน
 
 ### 11.11 Summary of Validation Results
 
@@ -2905,11 +2903,3 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 - dx, dy, dz: ระยะห่างระหว่างข้อต่อ
 
 ---
-
-## License
-
-**Copyright © 2025 by FIBO**  
-Institute of Field Robotics, King Mongkut's University of Technology Thonburi  
-Senior Thesis FRAB (FIBO Robotics and Automation: Bachelor)
-
-All rights reserved. This document and associated software are proprietary materials developed as part of an academic thesis project.
