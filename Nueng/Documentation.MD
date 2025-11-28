@@ -1629,8 +1629,7 @@ def get_workspace(self, theta1_samples=12, theta2_samples=12, d3_samples=6):
 **การแสดงผล Workspace พร้อม Singularities:**
 
 ```python
-def plot_workspace_with_singularities(self, theta1_samples=12, 
-                                      theta2_samples=12):
+def plot_workspace_with_singularities(self, theta1_samples=12, theta2_samples=12):
     # คำนวณ workspace
     workspace_points = self.get_workspace(theta1_samples, theta2_samples)
     
@@ -1655,9 +1654,7 @@ def plot_workspace_with_singularities(self, theta1_samples=12,
     # Plot singularity points
     if singularity_positions:
         sing_array = np.array(singularity_positions)
-        ax.scatter(sing_array[:, 0], sing_array[:, 1], sing_array[:, 2], 
-                  c='red', s=50, marker='x', 
-                  label='Singularities', zorder=5)
+        ax.scatter(sing_array[:, 0], sing_array[:, 1], sing_array[:, 2], c='red', s=50, marker='x', label='Singularities', zorder=5)
     
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -1671,8 +1668,7 @@ def plot_workspace_with_singularities(self, theta1_samples=12,
 #### 10.10.4 การหา Singularities
 
 ```python
-def find_singularities(self, theta1_samples=20, theta2_samples=20, 
-                       d3_samples=10):
+def find_singularities(self, theta1_samples=20, theta2_samples=20, d3_samples=10):
     singularity_positions = []
     singularity_configs = []
     singularity_threshold = 1e-3
@@ -1697,19 +1693,12 @@ def find_singularities(self, theta1_samples=20, theta2_samples=20,
         for theta2 in theta2_range:
             for d3 in d3_range:
                 try:
-                    is_singular = self.toolbox.check_singularity(
-                        [theta1, theta2, d3], 
-                        threshold=singularity_threshold
-                    )
+                    is_singular = self.toolbox.check_singularity([theta1, theta2, d3], threshold=singularity_threshold)
                     
                     if is_singular:
-                        position = self.toolbox.forward_kinematics(
-                            [theta1, theta2, d3], update_state=False
-                        )
+                        position = self.toolbox.forward_kinematics([theta1, theta2, d3], update_state=False)
                         singularity_positions.append(position)
-                        singularity_configs.append(
-                            ([theta1, theta2, d3], position)
-                        )
+                        singularity_configs.append(([theta1, theta2, d3], position))
                 except:
                     pass
     
@@ -1727,27 +1716,18 @@ def interactive_plot(self):
     plt.subplots_adjust(bottom=0.25)
     
     # กำหนดค่าเริ่มต้น
-    theta1_init = (self.toolbox.joint_limits[0][0] + 
-                   self.toolbox.joint_limits[0][1]) / 2
-    theta2_init = (self.toolbox.joint_limits[1][0] + 
-                   self.toolbox.joint_limits[1][1]) / 2
-    d3_init = (self.toolbox.joint_limits[2][0] + 
-               self.toolbox.joint_limits[2][1]) / 2
+    theta1_init = (self.toolbox.joint_limits[0][0] + self.toolbox.joint_limits[0][1]) / 2
+    theta2_init = (self.toolbox.joint_limits[1][0] +  self.toolbox.joint_limits[1][1]) / 2
+    d3_init = (self.toolbox.joint_limits[2][0] + self.toolbox.joint_limits[2][1]) / 2
     
     # สร้าง sliders
     ax_theta1 = plt.axes([0.15, 0.15, 0.65, 0.03])
     ax_theta2 = plt.axes([0.15, 0.10, 0.65, 0.03])
     ax_d3 = plt.axes([0.15, 0.05, 0.65, 0.03])
     
-    slider_theta1 = Slider(ax_theta1, 'θ1 (°)', 
-                          *self.toolbox.joint_limits[0], 
-                          valinit=theta1_init, valstep=1)
-    slider_theta2 = Slider(ax_theta2, 'θ2 (°)', 
-                          *self.toolbox.joint_limits[1], 
-                          valinit=theta2_init, valstep=1)
-    slider_d3 = Slider(ax_d3, 'd3 (m)', 
-                      *self.toolbox.joint_limits[2], 
-                      valinit=d3_init, valstep=0.01)
+    slider_theta1 = Slider(ax_theta1, 'θ1 (°)', *self.toolbox.joint_limits[0], valinit=theta1_init, valstep=1)
+    slider_theta2 = Slider(ax_theta2, 'θ2 (°)', *self.toolbox.joint_limits[1],  valinit=theta2_init, valstep=1)
+    slider_d3 = Slider(ax_d3, 'd3 (m)', *self.toolbox.joint_limits[2], valinit=d3_init, valstep=0.01)
     
     # Update function
     def update(val):
@@ -1758,9 +1738,7 @@ def interactive_plot(self):
         self.plot_robot(theta1, theta2, d3, ax=ax)
         
         try:
-            ee_pos = self.toolbox.forward_kinematics(
-                [theta1, theta2, d3], update_state=False
-            )
+            ee_pos = self.toolbox.forward_kinematics([theta1, theta2, d3], update_state=False)
             ax.text2D(0.05, 0.95, 
                      f'End Effector: [{ee_pos[0]:.2f}, '
                      f'{ee_pos[1]:.2f}, {ee_pos[2]:.2f}]',
@@ -1907,14 +1885,6 @@ def animate_trajectory(self, trajectory, total_time=None,
     return anim
 ```
 
-**Key Visualization Features:**
-1. **3D Robot Model:** แสดงท่าทางของแขนกลแบบ real-time
-2. **Workspace Visualization:** แสดงพื้นที่ทำงานพร้อม singularities
-3. **Interactive Control:** Sliders สำหรับควบคุมข้อต่อแบบ real-time
-4. **Animation:** แสดงการเคลื่อนไหวตาม trajectory พร้อม end effector path
-5. **Edges and Faces:** แสดงโครงสร้าง workspace ด้วย wireframe
-6. **Error Display:** แสดงข้อความ error เมื่อ configuration ไม่ถูกต้อง
-
 ---
 
 ## 11. การตรวจสอบความถูกต้องและการทดสอบระบบ (Verification and Validation)
@@ -1998,11 +1968,11 @@ p₀ = (8.000, 0.000, 5.500)
 
 **เกณฑ์การยอมรับ:**
 ```
-|Pₓ_actual - Pₓ_expected| < εₚₒₛ
-|Pᵧ_actual - Pᵧ_expected| < εₚₒₛ
-|Pz_actual - Pz_expected| < εₚₒₛ
+|Pₓ_actual - Pₓ_expected| < Eₚₒₛ
+|Pᵧ_actual - Pᵧ_expected| < Eₚₒₛ
+|Pz_actual - Pz_expected| < Eₚₒₛ
 ```
-โดยที่ εₚₒₛ = 10⁻⁶ m (machine precision for double floating-point)
+โดยที่ Eₚₒₛ = 10⁻⁶ m (machine precision for double floating-point)
 
 **ผลการทดสอบ:**
 ```python
@@ -2010,7 +1980,7 @@ result = toolbox.forward_kinematics([0, 0, 0])
 error = [abs(result[i] - expected[i]) for i in range(3)]
 
 # Result: error = [0, 0, 0] < 10⁻⁶
-# Conclusion: PASS ✓
+# Conclusion: PASS 
 ```
 
 #### Test Case 11.3.2: Pure Rotation about Z-axis
@@ -2042,10 +2012,10 @@ p₁ = (0.000, 8.000, 5.500)
 ||p₁|| = ||(0, 8, 5.5)|| = √(0² + 8² + 5.5²) = √94.25 ≈ 9.708
 ||p₀|| = ||(8, 0, 5.5)|| = √(8² + 0² + 5.5²) = √94.25 ≈ 9.708
 
-Verification: ||p₁|| = ||p₀|| ✓ (Conservation of radius)
+Verification: ||p₁|| = ||p₀||
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
 #### Test Case 11.3.3: Shoulder Rotation
 
@@ -2074,10 +2044,10 @@ p₂ = (4.500, 0.000, 8.000)
 **การตรวจสอบเงื่อนไข Geometric:**
 ```
 Δz = Pz - Z₁ = 8.000 - 5.000 = 3.000
-d₃_X_sum(expected) = 3.000 ✓ (matches when θ₂ = 90°)
+d₃_X_sum(expected) = 3.000
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
 #### Test Case 11.3.4: Prismatic Extension
 
@@ -2106,10 +2076,10 @@ p₃ = (13.000, 0.000, 5.500)
 **การตรวจสอบความสัมพันธ์เชิงเส้น:**
 ```
 Δx = p₃(x) - p₀(x) = 13.000 - 8.000 = 5.000
-d₃(input) = 5.000 ✓ (Linear relationship confirmed)
+d₃(input) = 5.000
 ```
 
-**ผลการทดสอบ:** PASS ✓
+**ผลการทดสอบ:** PASS
 
 #### Test Case 11.3.5: General Configuration
 
@@ -2151,10 +2121,10 @@ p₄ = (6.036, 6.036, 9.243) ± 0.001
 
 **การตรวจสอบสมมาตร:**
 ```
-Pₓ = Pᵧ ✓ (Symmetry at θ₁ = 45°)
+Pₓ = Pᵧ
 ```
 
-**ผลการทดสอบ:** PASS ✓ (error < 10⁻³)
+**ผลการทดสอบ:** PASS
 
 ### 11.4 Unit Testing: Inverse Kinematics
 

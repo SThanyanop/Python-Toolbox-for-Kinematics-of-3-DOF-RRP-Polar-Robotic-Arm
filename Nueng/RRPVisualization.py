@@ -425,6 +425,12 @@ class RRPVisualization:
         def Rz(angle):
             c, s = np.cos(angle), np.sin(angle)
             return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+        
+        direction = np.array([
+            np.sin(th2) * np.cos(th1),
+            np.sin(th2) * np.sin(th1),
+            np.cos(th2)
+        ])
 
         for segment in self.toolbox.link_params[0]:
             segment_vec = np.array(segment)
@@ -435,18 +441,12 @@ class RRPVisualization:
         link1_end_idx = len(robot_positions) - 1
 
         for segment in self.toolbox.link_params[1]:
-            segment_vec = np.array(segment)
-            rotated_segment = Rz(th1) @ segment_vec
-            current_pos = current_pos + rotated_segment
+            segment_length = np.linalg.norm(np.array(segment))
+            current_pos = current_pos + segment_length * direction
             robot_positions.append(current_pos.copy())
         
         link2_end_idx = len(robot_positions) - 1
 
-        direction = np.array([
-            np.sin(th2) * np.cos(th1),
-            np.sin(th2) * np.sin(th1),
-            np.cos(th2)
-        ])
         current_pos = current_pos + d3 * direction
         robot_positions.append(current_pos.copy())
         
