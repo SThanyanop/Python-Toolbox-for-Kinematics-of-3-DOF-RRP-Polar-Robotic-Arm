@@ -188,9 +188,10 @@ Azimuth เป็น slidebar หมุนตามทิศทางแนว�
 
 ![alt text](Champ/images/image-9.png)
 
-
-
  Python Toolbox สำหรับจำลองแขนกล RRP (Revolute-Revolute-Prismatic) ด้วยการคำนวณจลนศาสตร์และการแสดงภาพ 3D
+
+
+
 
 # Visualization
 ## การกำหนดค่าแขนกล
@@ -232,10 +233,9 @@ end_effector = [(0, 0, 0.5)]
 # Interactive visualization with sliders
 robot.interactive_plot()
 ```
-เป็นการ Visualizaiton ของแขนกล RRP โดยจะมี Slider ในการปรับเปลี่ยนองศาของ Joint1(θ1) Joint 2(θ2) และความยาวของ Prismatic link(d3)
+เป็นการ Visualizaiton ของแขนกล RRP โดยจะมี Slide bar ในการปรับเปลี่ยนองศาของ Joint1(θ1) Joint 2(θ2) และความยาวของ Prismatic link(d3)
 
 ![alt text](Petong/Img/Interactive%20plot.png)
-
 
 
 ### 2. Trajectory Visualization
@@ -279,3 +279,7 @@ robot.animate_trajectory(
 
 ![alt text](Petong/Img/slidebar.png)
 
+### 4. Visual Space
+พื้นที่แสดงการทำงานของแขนกล
+
+![alt text](Petong/Img/plot%20space.png)
