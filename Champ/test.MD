@@ -17,13 +17,12 @@ The RRP robot consists of:
 
 ### 1.2 Link Parameters
 
-Given as segments in 3D space:
+Given as segments in 3D space. Each link is represented as a list of 3D vectors:
 
-$$\text{link\_params} = \begin{bmatrix}
-\text{Link 1:} & [(x_1, y_1, z_1), (x_2, y_2, z_2), \ldots] \\
-\text{Link 2:} & [(x_3, y_3, z_3), \ldots] \\
-\text{End Effector:} & [(x_4, y_4, z_4), \ldots]
-\end{bmatrix}$$
+**Link Parameters Structure:**
+- Link 1: $[(x_1, y_1, z_1), (x_2, y_2, z_2), \ldots]$
+- Link 2: $[(x_3, y_3, z_3), \ldots]$
+- End Effector: $[(x_4, y_4, z_4), \ldots]$
 
 **Example:**
 ```
