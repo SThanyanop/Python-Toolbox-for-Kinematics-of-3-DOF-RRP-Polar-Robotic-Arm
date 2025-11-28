@@ -1133,9 +1133,9 @@ if __name__ == "__main__":
         [(0, 0, 0)]   # End Effector
     ]
     joint_limits = [
-        (0, 90),  # theta1 limits
+        (-180, 180),  # theta1 limits
         (0, 180),    # theta2 limits
-        (3, 5)       # d3 limits
+        (0, 5)       # d3 limits
     ]
     
     # Create an instance
