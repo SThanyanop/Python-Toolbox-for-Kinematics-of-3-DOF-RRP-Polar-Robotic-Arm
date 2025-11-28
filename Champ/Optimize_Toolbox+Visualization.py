@@ -1148,6 +1148,6 @@ if __name__ == "__main__":
     
     # Example: Visualize workspace (requires matplotlib)
     print("Plotting workspace...")
-    toolbox.plot_workspace_3d(10,10,5)
+    toolbox.plot_workspace_3d(10,5,5)
     toolbox.interactive_plot()
 
