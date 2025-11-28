@@ -8,8 +8,6 @@
   - [วิธีการใช้งานเบื้องต้น](#วิธีการใช้งานเบื้องต้น)
     - [1. Setup Toobox](#1-setup-toobox)
     - [2. Basic function](#2-basic-function)
-      - [inverse\_matrix(matrix)](#inverse_matrixmatrix)
-      - [inverse\_matrix(matrix)](#inverse_matrixmatrix-1)
     - [3. plot workspace](#3-plot-workspace)
   - [visualization-features](#visualization-features)
     - [controller component](#controller-component)
@@ -71,13 +69,59 @@ joint_limits = [
 ]
 ```
 ### 2. Basic function
-#### inverse_matrix(matrix)
-ใช้หา configuration space โดยมี 
+```python
+forward_kinematics(theta1, theta2, d3)
+```
 **Parameter**
-input เป็น matrix end effector
-**Error handle**
-- กรณีเกิด singular : "Matrix is singular and cannot be inverted"
-#### inverse_matrix(matrix)
+- `theta1`: มุมของข้อต่อที่ 1 (degrees)
+- `theta2`: มุมของข้อต่อที่ 2 (degrees)  
+- `d3`: ระยะการเคลื่อนที่แบบ prismatic ของข้อต่อที่ 3 (meters)
+
+**Output**
+- ตำแหน่ง (x, y, z) ของ end effector
+
+**Error handler**
+- ตรวจสอบว่าค่าพารามิเตอร์อยู่ในขอบเขตที่กำหนดใน joint_limits หรือไม่ ถ้าตัวแปรไม่ครบจะ return ว่าค่าไหนเกิน limit parameter
+
+---
+
+```python
+inverse_kinematics(x, y, z)
+```
+**Parameter**
+- `x`, `y`, `z`: พิกัดเป้าหมายของ end effector (meters)
+
+**Output**
+- (theta1, theta2, d3): ค่ามุมและระยะของแต่ละข้อต่อ
+
+**Error handler**
+- เช็คกรณีเกิด singularity หรือสามารถไปถึงจุดปลายได้ไหม
+
+---
+
+```python
+differential_forward_kinematics(self, joint_velocities, joint_config=None)
+```
+**Parameter**
+- `theta1`, `theta2`: มุมของข้อต่อ (degrees)
+- `d3`: ระยะการเคลื่อนที่แบบ prismatic (meters)
+
+**Output**
+- ความเร็ว end effector เป็น Jacobian matrix (vx,vy,vz)
+
+**Error handler**
+- เช็คกรณีเกิด singularity ของ Jacobian matrix 
+
+```python
+differential_inverse_kinematics(self, target_velocities, joint_config=None)
+```
+**Parameter**
+- `target_velocities`:ความเร็วของ end effector ที่ต้องการ
+
+**Output**
+- ความเร็วของ configuration space
+
+
 ****
 
 ### 3. plot workspace
