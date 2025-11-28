@@ -7,7 +7,10 @@
   - [Installation \& Setup](#installation--setup)
   - [วิธีการใช้งานเบื้องต้น](#วิธีการใช้งานเบื้องต้น)
     - [1. Setup Toobox](#1-setup-toobox)
-    - [2. plot workspace](#2-plot-workspace)
+    - [2. Basic function](#2-basic-function)
+      - [inverse\_matrix(matrix)](#inverse_matrixmatrix)
+      - [inverse\_matrix(matrix)](#inverse_matrixmatrix-1)
+    - [3. plot workspace](#3-plot-workspace)
   - [visualization-features](#visualization-features)
     - [controller component](#controller-component)
       - [1. hide vertice, hide face](#1-hide-vertice-hide-face)
@@ -67,7 +70,17 @@ joint_limits = [
     (3, 5)        # d3 limits (meters)
 ]
 ```
-### 2. plot workspace
+### 2. Basic function
+#### inverse_matrix(matrix)
+ใช้หา configuration space โดยมี 
+**Parameter**
+input เป็น matrix end effector
+**Error handle**
+- กรณีเกิด singular : "Matrix is singular and cannot be inverted"
+#### inverse_matrix(matrix)
+****
+
+### 3. plot workspace
 ```python
 # Plot workspace
 toolbox.plot_workspace_3d(theta1_samples=25, theta2_samples=25, d3_samples=15)
