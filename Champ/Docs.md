@@ -17,7 +17,7 @@ $$N_3^{sing} = \max(5, \lfloor N_3/2 \rfloor)$$
 - $N_2^{sing}$ คือจำนวนจุดที่จะคำนวณ singularity ของ $\theta_2$: ใช้สูตร $\max(8, \lfloor N_2/2 \rfloor)$ ซึ่งหมายถึงใช้ค่าที่มากกว่า ระหว่าง 8 หรือครึ่งหนึ่งของ theta2_samples
 - $N_3^{sing}$ คือจำนวนจุดที่จะคำนวณ singularity ของ $d_3$: ใช้สูตร $\max(5, \lfloor N_3/2 \rfloor)$ ซึ่งหมายถึงใช้ค่าที่มากกว่า ระหว่าง 5 หรือครึ่งหนึ่งของ d3_samples
 
-**ตัวอย่าง:**
+ตัวอย่าง:
 - ถ้า workspace ใช้ (theta1_samples=25, theta2_samples=25, d3_samples=15)
 - singularity detection จะใช้ samples: (max(8, 12)=12, max(8, 12)=12, max(5, 7)=7)
 
