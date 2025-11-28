@@ -396,6 +396,7 @@ class RRPToolbox:
         return (theta1_dot, theta2_dot, d3_dot)
     
     def print_status(self):
+        """Print current robot status including configuration, position, and singularity status"""
         print("\n" + "=" * 50)
         print("RRP Robot Status")
         print("=" * 50)
