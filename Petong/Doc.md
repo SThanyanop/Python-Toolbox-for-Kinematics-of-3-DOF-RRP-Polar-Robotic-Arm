@@ -320,3 +320,64 @@ def animate_trajectory(self, trajectory, total_time=None, trajectory_type='joint
         plt.show()
         return anim
 ```
+
+### 11.x Visualization Validation
+ในส่วนของ Visualization นั้นแบ่งได้เป็นสองส่วนคือ Interactive Visualization และ Trajectory Visualization ทำการ Validate เพื่อที่จะตรวจสอบความถูกต้อง
+
+#### 11.x.x Validate Interactive Visualization
+**Hypothesis :** ลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง
+
+#### Test Case : Link 1 Check
+**วัตถุประสงค์ :** ตรวจสอบว่าลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง เมื่อเทียบกับลิงค์ที่วาดมือ
+
+**Input :** 
+```
+link_1 = [(5, 0, 0), (0, 0, 5)]
+```
+
+**ผลลัพธ์ที่คาดหวัง :** Link 1 จากการ Plot โดย code มีรูปร่างและความยาวตรงกับ Link 1 จากการวาดมือ
+
+**ผลการทดสอบ :**   
+
+Link 1 จากการวาดมือ  
+![alt text](Img/Link1_Handdraw.jpg)
+
+Link 1 จากการ Plot โดย Code
+![alt text](Img/Link1%20(Small).png)
+
+**สรุปผลการทดลอง :** จากผลการทดสอบ พบว่า Link 1 จากการวาดมือ และ Link 1 จากการ Plot โดย code นั้นมีรูปแบบและความยาวเหมือนกัน ดังนั้นลิงค์ที่ plot ออกมานั้นมีรูปแบบและความยาวถูกต้อง
+
+#### 11.x.x Validate Trajectory Visualization
+**Hypothesis :** การเคลื่อนที่ของแขนกลถูกต้อง
+
+#### Test Case : Trajectory Check
+**วัตถุประสงค์ :** ตรวจสอบว่าการเคลื่อนที่ของแขนกลถูกต้องตาม End Effector Path
+
+**Input :** 
+```
+position_trajectory = [
+        [3, 3, 8],
+        [3, -3, 10],
+        [-3, -3, 8],
+        [-3, 3, 10],
+        [3, 3, 8],
+    ]
+```
+
+**ผลลัพธ์ที่คาดหวัง :** การเคลื่อนที่ของแขนกลตำแหน่ง End effector ตรงกับ End Effector Path
+
+**ผลการทดสอบ :**
+
+![alt text](Img/trajec.png)
+
+
+Code ที่ทำการสร้าง End Effector Path
+```python
+ax.plot(path_points[:frame+1, 0], path_points[:frame+1, 1], 
+                path_points[:frame+1, 2], 'r--', linewidth=2, 
+                alpha=0.5, label='End Effector Path')
+            ax.scatter(path_points[frame, 0], path_points[frame, 1], 
+                    path_points[frame, 2], s=100, c='yellow', marker='*', 
+                    edgecolors='black', linewidths=2, zorder=10)
+```
+**สรุปผลการทดลอง :** จากผลการทดสอบสังเกตุได้ว่าการเคลื่อนที่ของ End effector อยู่ในตำแหน่งที่ตรงกับ End Effector Path ดังนั้นแขนกลมีการเคลื่อนที่ที่ถูกต้อง

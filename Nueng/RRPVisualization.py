@@ -538,16 +538,6 @@ class RRPVisualization:
             theta2 = slider_theta2.val
             d3 = slider_d3.val
             self.plot_robot(theta1, theta2, d3, ax=ax)
-
-            try:
-                ee_pos = self.toolbox.forward_kinematics([theta1, theta2, d3], update_state=False)
-                ax.text2D(0.05, 0.95, f'End Effector: [{ee_pos[0]:.2f}, {ee_pos[1]:.2f}, {ee_pos[2]:.2f}]',
-                         transform=ax.transAxes, fontsize=10, verticalalignment='top',
-                         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-            except Exception as e:
-                ax.text2D(0.05, 0.95, f'Error: {str(e)}',
-                         transform=ax.transAxes, fontsize=10, verticalalignment='top',
-                         bbox=dict(boxstyle='round', facecolor='red', alpha=0.5))
             
             fig.canvas.draw_idle()
         

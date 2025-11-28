@@ -22,14 +22,14 @@ robot = RRPToolbox(link_params,joint_limits)
 
 viz = RRPVisualization(robot)
 
-viz.plot_workspace_3d()
+viz.interactive_plot()
 
 v_q = [1,1,1]
 
 DFK = robot.differential_forward_kinematics(v_q)
 DIK = robot.differential_inverse_kinematics(DFK)
 
-q = [45,45,3]
+q = [90,0,5]
 
 FK = robot.forward_kinematics(q)
 IK = robot.inverse_kinematics(FK)
