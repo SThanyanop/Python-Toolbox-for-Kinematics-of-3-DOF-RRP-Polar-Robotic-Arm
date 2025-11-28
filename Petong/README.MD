@@ -1,4 +1,4 @@
-# การใช้งาน RRP Visualization
+# การใช้งาน RRP 3D Visualization
 
  Python Toolbox สำหรับจำลองแขนกล RRP (Revolute-Revolute-Prismatic) ด้วยการคำนวณจลนศาสตร์และการแสดงภาพ 3D
 
@@ -10,7 +10,7 @@ pip install numpy matplotlib
 ```
 ### Import Toolbox
 ```python
-from Optimize_Toolbox import RRPToolbox
+from RRPVisualization import RRPVisualization
 ```
 
 ## การกำหนดค่าหุ่นยนต์
