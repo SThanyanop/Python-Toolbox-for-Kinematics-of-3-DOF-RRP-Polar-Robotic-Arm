@@ -181,15 +181,19 @@ Where $\mathbf{p}(\theta_1, \theta_2, d_3)$ is the end-effector position compute
 Starting from the base at origin $\mathbf{p}_0 = [0, 0, 0]$:
 
 **Step 1: Apply Link 1 segments**
+
 $\mathbf{p}_1 = \mathbf{p}_0 + \sum_{s_1 \in \text{Link1}} R_z(\theta_1) \cdot \mathbf{s}_1$
 
 **Step 2: Apply Link 2 segments**
+
 $\mathbf{p}_2 = \mathbf{p}_1 + \sum_{s_2 \in \text{Link2}} R_z(\theta_1) \cdot \mathbf{s}_2$
 
 **Step 3: Apply Prismatic Joint**
+
 $\mathbf{p}_3 = \mathbf{p}_2 + d_3 \cdot \mathbf{d}(\theta_2, \theta_1)$
 
 **Step 4: Apply End Effector segments**
+
 $\mathbf{p}_{EE} = \mathbf{p}_3 + \sum_{s_e \in \text{EE}} \|\mathbf{s}_e\| \cdot \mathbf{d}(\theta_2, \theta_1)$
 
 ---
