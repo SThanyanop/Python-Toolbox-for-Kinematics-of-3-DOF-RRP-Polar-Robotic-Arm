@@ -19,10 +19,10 @@ The RRP robot consists of:
 
 Given as segments in 3D space:
 
-$$\begin{bmatrix}\text{link\_params} = \begin{bmatrix}
-\text{Link 1: } [(x_1, y_1, z_1), (x_2, y_2, z_2), ...] \\
-\text{Link 2: } [(x_3, y_3, z_3), ...] \\
-\text{End Effector: } [(x_4, y_4, z_4), ...]
+$$\text{link\_params} = \begin{bmatrix}
+\text{Link 1:} & [(x_1, y_1, z_1), (x_2, y_2, z_2), \ldots] \\
+\text{Link 2:} & [(x_3, y_3, z_3), \ldots] \\
+\text{End Effector:} & [(x_4, y_4, z_4), \ldots]
 \end{bmatrix}$$
 
 **Example:**
