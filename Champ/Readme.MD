@@ -73,9 +73,20 @@ joint_limits = [
 ```python
 Configuration_Space_Calculation(self, target_position, target_velocity, config=False)
 ```
+**Parameter**
+- `target_position`: ตำแหน่งปลายแขนที่ต้องการ
+- `target_velocity`: ความเร็วปลายแขนที่ต้องการ
+**Output**
+ตำแหน่งและความเร็วใน configuration space
+
 ```python
 Task_Space_Calculation(self, joint_config, joint_velocity, config=False)
 ```
+**Parameter**
+- `joint_config`: ตำแหน่ง configuration space
+- `joint_velocity`: ความเร็ว configuration space
+**Output**
+ตำแหน่งและความเร็วของ end effector
 
 ```python
 forward_kinematics(theta1, theta2, d3)
