@@ -32,7 +32,8 @@ pip install numpy matplotlib scipy
 ```
 import Toolbox
 ```python
-from Optimize_Toolbox import RRPToolbox
+from RRPToolbox import RRPToolbox
+from RRPVisualization import RRPVisualization
 ```
 ---
 ## วิธีการใช้งานเบื้องต้น
