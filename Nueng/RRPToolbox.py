@@ -393,7 +393,7 @@ class RRPToolbox:
         theta2_dot = inv_reduced_J[1][0] * vx + inv_reduced_J[1][1] * vy + inv_reduced_J[1][2] * vz
         d3_dot = inv_reduced_J[2][0] * vx + inv_reduced_J[2][1] * vy + inv_reduced_J[2][2] * vz
         
-        return (theta1_dot, theta2_dot, d3_dot)
+        return (theta1_dot * RAD_TO_DEG, theta2_dot * RAD_TO_DEG, d3_dot)
     
     def print_status(self):
         """Print current robot status including configuration, position, and singularity status"""
