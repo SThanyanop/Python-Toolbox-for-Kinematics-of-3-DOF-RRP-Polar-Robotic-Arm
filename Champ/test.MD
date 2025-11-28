@@ -164,9 +164,12 @@ function ComputeWorkspace(N₁, N₂):
 
 ### 4.2 Mathematical Formulation
 
-The workspace $\mathcal{W}$ is defined as:
+The workspace is the set of all end-effector positions reachable by varying joint parameters:
 
-$$\mathcal{W} = \left\{ \mathbf{p}(\theta_1, \theta_2, d_3) \in \mathbb{R}^3 \mid \theta_1 \in [\theta_{1,min}, \theta_{1,max}], \theta_2 \in [\theta_{2,min}, \theta_{2,max}], d_3 \in \{d_{3,min}, d_{3,max}\} \right\}$$
+**Configuration ranges:**
+- $\theta_1 \in [\theta_{1,min}, \theta_{1,max}]$
+- $\theta_2 \in [\theta_{2,min}, \theta_{2,max}]$
+- $d_3 \in \{d_{3,min}, d_{3,max}\}$ (only boundary values)
 
 Where $\mathbf{p}(\theta_1, \theta_2, d_3)$ is the end-effector position computed via forward kinematics.
 
@@ -277,13 +280,13 @@ $$F_{total} = 2 \times 11 \times 11 + 2 \times 11 + 2 \times 11 = 242 + 22 + 22 
 
 ### 6.3 Duplicate Elimination
 
-Each face is represented as a sorted 4-tuple of point indices:
-$$\text{face\_key} = \text{sort}(i_1, i_2, i_3, i_4)$$
+Each face is represented as a sorted 4-tuple of point indices.
 
-A set $S$ tracks unique faces:
-$$S = \{\text{face\_key} \mid \text{face is not duplicate}\}$$
+**Face key creation:** Sort the indices $(i_1, i_2, i_3, i_4)$ to create a unique identifier.
 
-Only faces with unique keys are added to the visualization.
+**Duplicate tracking:** A set $S$ stores all processed face keys. Before adding a face to the visualization, check if its key is already in $S$.
+
+**Result:** Only faces with unique keys are rendered, ensuring no duplicate surfaces in the plot.
 
 ---
 
