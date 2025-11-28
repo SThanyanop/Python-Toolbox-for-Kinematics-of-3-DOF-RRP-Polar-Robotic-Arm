@@ -96,18 +96,18 @@ JointLimits_i = [min_x  max_x]
 
 **3. Task Space และเวลาในการเคลื่อนที่**
 
-กำหนดตำแหน่งและการวางแนวของ End Effector พร้อมระยะเวลาในการเคลื่อนที่:
+กำหนดตำแหน่งและความเร็วของ End Effector:
 
 ```
-TaskSpace = [x, y, z, Δt]
+TaskSpace = [x, y, z], [ẋₑ, ẏₑ, żₑ]
 ```
 
 **4. Configuration Space และเวลาในการเคลื่อนที่**
 
-กำหนดค่าตำแหน่งของข้อต่อทั้งหมดพร้อมระยะเวลา:
+กำหนดค่าตำแหน่งและความเร็วของข้อต่อทั้งหมด:
 
 ```
-ConfigSpace = [θ₁, θ₂, d₃, Δt]
+ConfigSpace = [θ₁, θ₂, d₃], [θ̇₁, θ̇₂, ḋ₃]
 ```
 
 ---
@@ -2838,8 +2838,18 @@ ax.scatter(path_points[frame, 0], path_points[frame, 1], path_points[frame, 2], 
 
 **Conclusion:**
 
-ระบบ Python Toolbox for Kinematics Analysis of 3-DOF (RRP) Polar Robotic Arm ผ่านการตรวจสอบความถูกต้องและการทดสอบทุกระดับ ตั้งแต่ unit testing, integration testing ไปจนถึง system testing โดยมีอัตราความสำเร็จ 100% และความแม่นยำสูงกว่าเกณฑ์ที่กำหนดในทุกกรณีทดสอบ
+ระบบ Python Toolbox for Kinematics Analysis of 3-DOF (RRP) Polar Robotic Arm ผ่านการตรวจสอบความถูกต้องและการทดสอบทุกระดับ ตั้งแต่ unit testing, integration testing ไปจนถึง system testing
+
 ---
+
+## 12. สรุปผลการทำงาน
+
+จากวัตถุประสงค์ที่ตั้งไว้
+1. เพื่อศึกษาและวิเคราะห์จลนศาสตร์ของ Polar Robotic Arm ในปริภูมิสามมิติ
+2. เพื่อพัฒนา Python Toolbox สำหรับการคำนวณ Forward Kinematics, Inverse Kinematics และ Differential Kinematics ของ Polar Robotic Arm
+3. เพื่อพัฒนาระบบแสดงภาพแบบสามมิติ (3D Visualization) สำหรับการแสดงท่าทาง (Pose) และการเคลื่อนไหว (Animation) ของแขนกล
+
+สามารถกล่าวได้ว่าระหว่างปฎิบัติงานผู้จัดทำได้ดำเนินการจัดทำและแก้ไขปัญหาที่พบได้เกือบทั้งหมด เนื่อง 3D Workspace ยังไม่สามารถทำงานได้อย่างมีประสิทธิภาพ แต่ยังคงกล่าวได้ว่าจากการทดสอบทั้งหมดสามารถยืนยันได้ว่า สามารถพัฒนา Python Toolbox สำหรับการคำนวณ Forward Kinematics, Inverse Kinematics และ Differential Kinematics ของ Polar Robotic Arm และ ระบบแสดงภาพแบบสามมิติ (3D Visualization) สำหรับการแสดงท่าทาง (Pose) และการเคลื่อนไหว (Animation) ของแขนกล ยังคงสามารถบรรลุวัตถุประสงค์ได้
 
 ## สัญลักษณ์ที่ใช้ (Notation)
 
