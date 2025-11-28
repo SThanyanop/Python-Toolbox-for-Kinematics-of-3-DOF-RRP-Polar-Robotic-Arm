@@ -253,4 +253,23 @@ $$\ F = F_A \cup F_B \cup F_C, \quad$$
 ## 11. validation
 จากการ plot workspace ต้องพิสูจน์ว่าค่าที่ plot ใน workspace นั้น ตรงกับการคำนวนจริงๆหรือไม่ โดยตรวจสอบด้วยวิธีการลองทำ forward kinematic ของจุดที่ vertex มี โดยในทุกกรณีจะมี vertex ในจุดที่เป็น q1_max,q1_min,q2_max,q2_min,d3_max,d3_min ในทุกกรณี จึงสามารถตรวจสอยได้ว่าค่าที่ plot นั้นถูกต้องได้จากขอบที่เกิดขึ้น จึงได้ตรวจสอบด้วยการหา forward kinematic เพื่อดูว่า ค่า end effector ที่ plot ใน workspace 3D ได้ plot จุดดังกล่าวหรื่อไม่
 
-ในการหา singularity point ต้องเป็นจุดที่หุ่นยนต์สามารถเคลื่อนที่ไป ณ จุดนั้นแล้วเกิด singularity ได้
+โดยในการทดสอบ จะทดสอบจากการลองเช็คค่า forward kinematic ของแต่ละ limit โดยยกตัวอย่างเป็นรูปแบบดังนี้
+```python
+link_params = [
+    [(5, 0, 0), (0, 0, 5)],  # Link 1
+    [(5, 0, 0)],              # Link 2
+    [(0, 0, 0)]               # End Effector
+]
+joint_limits = [
+    (0, 90),     # theta1 limits (degrees)
+    (0, 180),    # theta2 limits (degrees)
+    (0, 5)       # d3 limits (units)
+]
+```
+โดยจะวัดตำแหน่งในขณะที่แขนหุ่นยนต์มี parameter ดังนี้
+(0,0,0),(90,0,0),(0,180,0),(0,0,5),(90,180,0),(0,180,5),(90,0,5),(90,180,5)
+
+ในการทดลอง จะใช้คำสั่ง interactive_plot() โดยเลื่อน parameter ไปยังตำแหน่งที่กำหนดไว้ข้างต้น และลองเปรียบเทียบกับค่าที่ได้ใน workspace ว่ามีต่ำแหน่งดังกล่าวหรือไม่
+เช่น หากตั้ง parameter (q1,q2,d3) เป็น (0,0,0),(0,0,5) ควรจะมี vertex ในพิกัด (10,0,10),() 
+![alt text](image.png)
+
